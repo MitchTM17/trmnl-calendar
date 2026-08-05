@@ -5,6 +5,17 @@
     rel="stylesheet"
     href="https://trmnl.com/assets/plugins/calendars_full_week-0e0ce25b.css">
 <style>
+    /*
+     * FullCalendar's own bundled CSS (from the two stylesheets above) was
+     * quietly beating our Framework grayscale classes on specificity/order
+     * when applied straight to FullCalendar's .fc-event wrapper - even
+     * though the exact same classes work fine on a plain <div> (confirmed
+     * by testing outside FullCalendar). So instead of fighting that CSS,
+     * we neutralize FullCalendar's own event chrome entirely and render
+     * our own plain, uncontested inner <div> for every event (built in
+     * eventContent below) - structurally identical to the working plain
+     * <div class="bg--gray-25 text--white"> test.
+     */
     #calendar-full-week .fc-event,
     #calendar-full-week .fc-v-event,
     #calendar-full-week .fc-timegrid-event,
@@ -97,11 +108,71 @@
             now: "{{ trmnl.system.timestamp_utc | plus: trmnl.user.utc_offset | date: '%Y-%m-%dT%H:%M:%S' }}",
             timeZone: "UTC",
 
+            {% comment %}
+                Auto-scrolling window, local time (not UTC), driven by the
+                4 settings fields (auto_scroll_enabled, auto_scroll_start,
+                auto_scroll_end, auto_scroll_frequency):
+
+                - auto_scroll_start / auto_scroll_end define the window's
+                  WIDTH (end - start) and also serve as the first anchor
+                  time-of-day.
+                - auto_scroll_frequency (a divisor of 24, enforced by the
+                  form dropdown) is how many hours apart the anchors are,
+                  e.g. start=08:00 + frequency=6 reproduces the old fixed
+                  08:00/14:00/20:00/02:00 cycle.
+                - When disabled, the window is just the fixed
+                  [start, end] range every time - no rotation.
+
+                All math is done in whole minutes (not hours) so it also
+                works if start/end aren't on the hour. Overnight windows
+                use FullCalendar's past-midnight notation ("26:00:00" etc)
+                so they render as one contiguous block. Zero-padding uses
+                the standard Liquid "prepend a 0, then take the last 2
+                characters" trick since Liquid has no built-in pad filter.
+            {% endcomment %}
+            {% assign startHour = auto_scroll_start | default: "08:00" | slice: 0, 2 | plus: 0 %}
+            {% assign startMinutePart = auto_scroll_start | default: "08:00" | slice: 3, 2 | plus: 0 %}
+            {% assign endHour = auto_scroll_end | default: "20:00" | slice: 0, 2 | plus: 0 %}
+            {% assign endMinutePart = auto_scroll_end | default: "20:00" | slice: 3, 2 | plus: 0 %}
+
+            {% assign startTotalMin = startHour | times: 60 | plus: startMinutePart %}
+            {% assign endTotalMin = endHour | times: 60 | plus: endMinutePart %}
+            {% assign windowWidthMin = endTotalMin | minus: startTotalMin | plus: 1440 | modulo: 1440 %}
+
+            {% if auto_scroll_enabled %}
+                {% assign freqHours = auto_scroll_frequency | default: 6 | plus: 0 %}
+                {% assign freqMin = freqHours | times: 60 %}
+
+                {% assign nowHour = trmnl.system.timestamp_utc | plus: trmnl.user.utc_offset | date: '%H' | plus: 0 %}
+                {% assign nowMinutePart = trmnl.system.timestamp_utc | plus: trmnl.user.utc_offset | date: '%M' | plus: 0 %}
+                {% assign nowTotalMin = nowHour | times: 60 | plus: nowMinutePart %}
+
+                {% assign shiftedMin = nowTotalMin | minus: startTotalMin | plus: 1440 | modulo: 1440 %}
+                {% assign bucketIndex = shiftedMin | divided_by: freqMin %}
+                {% assign bucketOffsetMin = bucketIndex | times: freqMin %}
+                {% assign anchorMin = startTotalMin | plus: bucketOffsetMin | modulo: 1440 %}
+            {% else %}
+                {% assign anchorMin = startTotalMin %}
+            {% endif %}
+            {% assign windowEndMin = anchorMin | plus: windowWidthMin %}
+
+            {% assign windowStartHourPart = anchorMin | divided_by: 60 %}
+            {% assign windowStartMinutePart = anchorMin | modulo: 60 %}
+            {% assign windowStartHourStr = windowStartHourPart | prepend: "0" | slice: -2, 2 %}
+            {% assign windowStartMinuteStr = windowStartMinutePart | prepend: "0" | slice: -2, 2 %}
+            {% capture windowStart %}{{ windowStartHourStr }}:{{ windowStartMinuteStr }}:00{% endcapture %}
+
+            {% assign windowEndHourPart = windowEndMin | divided_by: 60 %}
+            {% assign windowEndMinutePart = windowEndMin | modulo: 60 %}
+            {% assign windowEndHourStr = windowEndHourPart | prepend: "0" | slice: -2, 2 %}
+            {% assign windowEndMinuteStr = windowEndMinutePart | prepend: "0" | slice: -2, 2 %}
+            {% capture windowEnd %}{{ windowEndHourStr }}:{{ windowEndMinuteStr }}:00{% endcapture %}
+
             // CalDAV display settings
             firstDay: {{ caldav_405381.first_day | default: 0 }},
-            scrollTime: {{ caldav_405381.scroll_time | default: "09:00" | json }},
-            slotMinTime: {{ caldav_405381.scroll_time | default: "09:00" | json }},
-            slotMaxTime: {{ caldav_405381.scroll_time_end | default: "22:00" | json }},
+            scrollTime: {{ windowStart | json }},
+            slotMinTime: {{ windowStart | json }},
+            slotMaxTime: {{ windowEnd | json }},
 
             // Week-view layout
             headerToolbar: false,
@@ -129,10 +200,10 @@
              * gray-30, gray-55, gray-60 - white is the page background, so
              * it's not offered as an event color). Each slot's data source
              * is picked by the VIEWING USER via a plugin_instance_select
-             * dropdown in the settings form.
-             * This allows this same template to work unmodified for
-             * someone else's account with entirely different plugins, as
-             * their dropdown will show their own plugins.
+             * dropdown in the settings form - not a hardcoded plugin name.
+             * That's what lets this same template work unmodified for
+             * someone else's account with entirely different plugins:
+             * their dropdown shows their own plugins.
              *
              * Color is set via fillClass in extendedProps, read by
              * eventContent below to build the actual filled <div> - not
@@ -380,7 +451,11 @@
             ],
 
             /*
-             * Renders each event as one plain, self-owned <div> this div is the
+             * Renders each event as one plain, self-owned <div> - the same
+             * structure as the plain-div test that proved Framework
+             * classes (and dithering) work fine outside of FullCalendar's
+             * own markup. FullCalendar's default event chrome is
+             * neutralized in the <style> block above, so this div is the
              * only thing painting each event's background/text.
              */
             eventContent: function (info) {
@@ -399,7 +474,7 @@
 
         calendar.render();
 
-        // Ensures the current-time line spanns only the day columns.
+        // Keep the current-time line spanning only the day columns.
         function updateNowIndicatorWidth() {
             try {
                 var dayColumns = calendarEl.querySelectorAll("td.fc-timegrid-col:not(.fc-timegrid-axis)");
