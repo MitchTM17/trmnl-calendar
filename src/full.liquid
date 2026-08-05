@@ -5,17 +5,6 @@
     rel="stylesheet"
     href="https://trmnl.com/assets/plugins/calendars_full_week-0e0ce25b.css">
 <style>
-    /*
-     * FullCalendar's own bundled CSS (from the two stylesheets above) was
-     * quietly beating our Framework grayscale classes on specificity/order
-     * when applied straight to FullCalendar's .fc-event wrapper - even
-     * though the exact same classes work fine on a plain <div> (confirmed
-     * by testing outside FullCalendar). So instead of fighting that CSS,
-     * we neutralize FullCalendar's own event chrome entirely and render
-     * our own plain, uncontested inner <div> for every event (built in
-     * eventContent below) - structurally identical to the working plain
-     * <div class="bg--gray-25 text--white"> test.
-     */
     #calendar-full-week .fc-event,
     #calendar-full-week .fc-v-event,
     #calendar-full-week .fc-timegrid-event,
@@ -140,10 +129,10 @@
              * gray-30, gray-55, gray-60 - white is the page background, so
              * it's not offered as an event color). Each slot's data source
              * is picked by the VIEWING USER via a plugin_instance_select
-             * dropdown in the settings form - not a hardcoded plugin name.
-             * That's what lets this same template work unmodified for
-             * someone else's account with entirely different plugins:
-             * their dropdown shows their own plugins.
+             * dropdown in the settings form.
+             * This allows this same template to work unmodified for
+             * someone else's account with entirely different plugins, as
+             * their dropdown will show their own plugins.
              *
              * Color is set via fillClass in extendedProps, read by
              * eventContent below to build the actual filled <div> - not
@@ -391,11 +380,7 @@
             ],
 
             /*
-             * Renders each event as one plain, self-owned <div> - the same
-             * structure as the plain-div test that proved Framework
-             * classes (and dithering) work fine outside of FullCalendar's
-             * own markup. FullCalendar's default event chrome is
-             * neutralized in the <style> block above, so this div is the
+             * Renders each event as one plain, self-owned <div> this div is the
              * only thing painting each event's background/text.
              */
             eventContent: function (info) {
@@ -414,7 +399,7 @@
 
         calendar.render();
 
-        // Keep the current-time line spanning only the day columns.
+        // Ensures the current-time line spanns only the day columns.
         function updateNowIndicatorWidth() {
             try {
                 var dayColumns = calendarEl.querySelectorAll("td.fc-timegrid-col:not(.fc-timegrid-axis)");
