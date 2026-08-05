@@ -49,7 +49,7 @@ custom_fields:
   group: Black
 - keyname: gray_25_1_source
   field_type: plugin_instance_select
-  name: Gray 25 - Calendar 1
+  name: calendar_0
   plugin_keyname: private_plugin
   description: Pick one of your private plugins to render in gray-25.
   help_text: Leave unselected to skip this slot.
@@ -57,7 +57,7 @@ custom_fields:
   group: Gray 25
 - keyname: gray_25_2_source
   field_type: plugin_instance_select
-  name: Gray 25 - Calendar 2
+  name: calendar_1
   plugin_keyname: private_plugin
   description: Pick another private plugin to also render in gray-25.
   help_text: Leave unselected to skip this slot.
@@ -65,7 +65,7 @@ custom_fields:
   group: Gray 25
 - keyname: gray_30_1_source
   field_type: plugin_instance_select
-  name: Gray 30 - Calendar 1
+  name: calendar_0
   plugin_keyname: private_plugin
   description: Pick one of your private plugins to render in gray-30.
   help_text: Leave unselected to skip this slot.
@@ -73,7 +73,7 @@ custom_fields:
   group: Gray 30
 - keyname: gray_30_2_source
   field_type: plugin_instance_select
-  name: Gray 30 - Calendar 2
+  name: calendar_1
   plugin_keyname: private_plugin
   description: Pick another private plugin to also render in gray-30.
   help_text: Leave unselected to skip this slot.
@@ -81,7 +81,7 @@ custom_fields:
   group: Gray 30
 - keyname: gray_55_1_source
   field_type: plugin_instance_select
-  name: Gray 55 - Calendar 1
+  name: calendar_0
   plugin_keyname: private_plugin
   description: Pick one of your private plugins to render in gray-55.
   help_text: Leave unselected to skip this slot.
@@ -89,7 +89,7 @@ custom_fields:
   group: Gray 55
 - keyname: gray_55_2_source
   field_type: plugin_instance_select
-  name: Gray 55 - Calendar 2
+  name: calendar_1
   plugin_keyname: private_plugin
   description: Pick another private plugin to also render in gray-55.
   help_text: Leave unselected to skip this slot.
@@ -97,7 +97,7 @@ custom_fields:
   group: Gray 55
 - keyname: gray_60_1_source
   field_type: plugin_instance_select
-  name: Gray 60 - Calendar 1
+  name: calendar_0
   plugin_keyname: private_plugin
   description: Pick one of your private plugins to render in gray-60.
   help_text: Leave unselected to skip this slot.
@@ -105,7 +105,7 @@ custom_fields:
   group: Gray 60
 - keyname: gray_60_2_source
   field_type: plugin_instance_select
-  name: Gray 60 - Calendar 2
+  name: calendar_1
   plugin_keyname: private_plugin
   description: Pick another private plugin to also render in gray-60.
   help_text: Leave unselected to skip this slot.
