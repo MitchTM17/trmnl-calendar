@@ -33,7 +33,7 @@ oauth_fixed_expiry_ms: ''
 custom_fields:
 - keyname: black_1_source
   field_type: plugin_instance_select
-  name: Black - Calendar 1
+  name: calendar_0
   plugin_keyname: private_plugin
   description: Pick one of your private plugins to render in black.
   help_text: Leave unselected to skip this slot.
@@ -41,7 +41,7 @@ custom_fields:
   group: Black
 - keyname: black_2_source
   field_type: plugin_instance_select
-  name: Black - Calendar 2
+  name: calendar_1
   plugin_keyname: private_plugin
   description: Pick another private plugin to also render in black.
   help_text: Leave unselected to skip this slot.
