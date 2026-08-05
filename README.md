@@ -1,4 +1,4 @@
-# Calendar Renderer
+# multicolor calendar
 
 A [TRMNL](https://trmnl.com) plugin for ePaper displays, connected by
 [GitHub Sync](https://help.trmnl.com/en/articles/15977899-github-sync): every save in TRMNL lands here as a commit.
