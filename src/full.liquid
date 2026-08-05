@@ -139,7 +139,18 @@
             {% assign endTotalMin = endHour | times: 60 | plus: endMinutePart %}
             {% assign windowWidthMin = endTotalMin | minus: startTotalMin | plus: 1440 | modulo: 1440 %}
 
-            {% if auto_scroll_enabled %}
+            {% comment %}
+                Checked against false/"false" explicitly (not truthiness of
+                auto_scroll_enabled directly) because a pre-existing plugin
+                instance won't have this field's value saved until the
+                settings form is opened and saved at least once - and an
+                unset/nil value is falsy in Liquid, which would otherwise
+                silently look identical to "disabled." This way an unset
+                value still behaves like the field's own default: true.
+            {% endcomment %}
+            {% if auto_scroll_enabled == false or auto_scroll_enabled == "false" %}
+                {% assign anchorMin = startTotalMin %}
+            {% else %}
                 {% assign freqHours = auto_scroll_frequency | default: 6 | plus: 0 %}
                 {% assign freqMin = freqHours | times: 60 %}
 
@@ -151,8 +162,6 @@
                 {% assign bucketIndex = shiftedMin | divided_by: freqMin %}
                 {% assign bucketOffsetMin = bucketIndex | times: freqMin %}
                 {% assign anchorMin = startTotalMin | plus: bucketOffsetMin | modulo: 1440 %}
-            {% else %}
-                {% assign anchorMin = startTotalMin %}
             {% endif %}
             {% assign windowEndMin = anchorMin | plus: windowWidthMin %}
 
