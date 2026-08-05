@@ -109,99 +109,31 @@
             timeZone: "UTC",
 
             {% comment %}
-                Auto-scrolling window, local time (not UTC), driven by the
-                4 settings fields (auto_scroll_enabled, auto_scroll_start,
-                auto_scroll_end, auto_scroll_frequency):
-
-                - auto_scroll_start / auto_scroll_end define the window's
-                  WIDTH (end - start) and also serve as the first anchor
-                  time-of-day.
-                - auto_scroll_frequency (a divisor of 24, enforced by the
-                  form dropdown) is how many hours apart the anchors are,
-                  e.g. start=08:00 + frequency=6 reproduces the old fixed
-                  08:00/14:00/20:00/02:00 cycle.
-                - When disabled, the window is just the fixed
-                  [start, end] range every time - no rotation.
-
-                All math is done in whole minutes (not hours) so it also
-                works if start/end aren't on the hour. Overnight windows
-                use FullCalendar's past-midnight notation ("26:00:00" etc)
-                so they render as one contiguous block.
-
-                Only uses filters/tags already proven to work in this
-                exact plugin (split/first/last, append, plain if/else
-                comparisons) - deliberately avoiding slice, prepend,
-                capture, and the `blank` literal, since none of those were
-                ever confirmed to actually render here, and TRMNL is
-                already known to have a restricted Liquid dialect (its
-                array bracket indexing doesn't work either - first/last
-                is required there too). If the settings weren't visibly
-                changing anything, an unsupported tag/filter silently
-                failing the whole render (and TRMNL falling back to a
-                stale cached output) is the most likely explanation.
+                STEP 1 of the backtrack plan: pure hardcoded rotation only,
+                no settings fields involved at all. Same 4-bucket math
+                that was validated earlier in this build - 08:00-20:00,
+                14:00-02:00, 20:00-08:00, 02:00-14:00, cycling every 6h,
+                based on local time. Once this is confirmed actually
+                rotating on the device, we'll layer the enable/disable
+                toggle back on top of it, then the custom start/end times.
             {% endcomment %}
-            {% assign startParts = auto_scroll_start | default: "08:00" | split: ":" %}
-            {% assign startHour = startParts | first | plus: 0 %}
-            {% assign startMinutePart = startParts | last | plus: 0 %}
-            {% assign endParts = auto_scroll_end | default: "20:00" | split: ":" %}
-            {% assign endHour = endParts | first | plus: 0 %}
-            {% assign endMinutePart = endParts | last | plus: 0 %}
-
-            {% assign startTotalMin = startHour | times: 60 | plus: startMinutePart %}
-            {% assign endTotalMin = endHour | times: 60 | plus: endMinutePart %}
-            {% assign windowWidthMin = endTotalMin | minus: startTotalMin | plus: 1440 | modulo: 1440 %}
-
-            {% comment %}
-                Checked broadly (not just == false) because Liquid's
-                truthiness is quirky - an empty string is truthy, only
-                nil/false are falsy - so if TRMNL sends the toggle's "off"
-                state as blank/empty rather than a literal false, a
-                false-only check would never match.
-            {% endcomment %}
-            {% if auto_scroll_enabled == nil or auto_scroll_enabled == "" or auto_scroll_enabled == false or auto_scroll_enabled == "false" or auto_scroll_enabled == "off" or auto_scroll_enabled == "no" or auto_scroll_enabled == "0" %}
-                {% assign anchorMin = startTotalMin %}
-            {% else %}
-                {% assign freqHours = auto_scroll_frequency | default: 6 | plus: 0 %}
-                {% assign freqMin = freqHours | times: 60 %}
-
-                {% assign nowHour = trmnl.system.timestamp_utc | plus: trmnl.user.utc_offset | date: '%H' | plus: 0 %}
-                {% assign nowMinutePart = trmnl.system.timestamp_utc | plus: trmnl.user.utc_offset | date: '%M' | plus: 0 %}
-                {% assign nowTotalMin = nowHour | times: 60 | plus: nowMinutePart %}
-
-                {% assign shiftedMin = nowTotalMin | minus: startTotalMin | plus: 1440 | modulo: 1440 %}
-                {% assign bucketIndex = shiftedMin | divided_by: freqMin %}
-                {% assign bucketOffsetMin = bucketIndex | times: freqMin %}
-                {% assign anchorMin = startTotalMin | plus: bucketOffsetMin | modulo: 1440 %}
-            {% endif %}
-            {% assign windowEndMin = anchorMin | plus: windowWidthMin %}
-
-            {% assign windowStartHourPart = anchorMin | divided_by: 60 %}
-            {% assign windowStartMinutePart = anchorMin | modulo: 60 %}
-            {% if windowStartHourPart < 10 %}
-                {% assign windowStartHourStr = "0" | append: windowStartHourPart %}
-            {% else %}
-                {% assign windowStartHourStr = windowStartHourPart | append: "" %}
-            {% endif %}
-            {% if windowStartMinutePart < 10 %}
-                {% assign windowStartMinuteStr = "0" | append: windowStartMinutePart %}
-            {% else %}
-                {% assign windowStartMinuteStr = windowStartMinutePart | append: "" %}
-            {% endif %}
-            {% assign windowStart = windowStartHourStr | append: ":" | append: windowStartMinuteStr | append: ":00" %}
-
-            {% assign windowEndHourPart = windowEndMin | divided_by: 60 %}
-            {% assign windowEndMinutePart = windowEndMin | modulo: 60 %}
-            {% if windowEndHourPart < 10 %}
-                {% assign windowEndHourStr = "0" | append: windowEndHourPart %}
-            {% else %}
-                {% assign windowEndHourStr = windowEndHourPart | append: "" %}
-            {% endif %}
-            {% if windowEndMinutePart < 10 %}
-                {% assign windowEndMinuteStr = "0" | append: windowEndMinutePart %}
-            {% else %}
-                {% assign windowEndMinuteStr = windowEndMinutePart | append: "" %}
-            {% endif %}
-            {% assign windowEnd = windowEndHourStr | append: ":" | append: windowEndMinuteStr | append: ":00" %}
+            {% assign localHour = trmnl.system.timestamp_utc | plus: trmnl.user.utc_offset | date: '%H' | plus: 0 %}
+            {% assign shiftedHour = localHour | minus: 2 | plus: 24 | modulo: 24 %}
+            {% assign bucketIndex = shiftedHour | divided_by: 6 %}
+            {% case bucketIndex %}
+                {% when 0 %}
+                    {% assign windowStart = "02:00:00" %}
+                    {% assign windowEnd = "14:00:00" %}
+                {% when 1 %}
+                    {% assign windowStart = "08:00:00" %}
+                    {% assign windowEnd = "20:00:00" %}
+                {% when 2 %}
+                    {% assign windowStart = "14:00:00" %}
+                    {% assign windowEnd = "26:00:00" %}
+                {% else %}
+                    {% assign windowStart = "20:00:00" %}
+                    {% assign windowEnd = "32:00:00" %}
+            {% endcase %}
 
             // CalDAV display settings
             firstDay: {{ caldav_405381.first_day | default: 0 }},
