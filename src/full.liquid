@@ -6,19 +6,48 @@
     href="https://trmnl.com/assets/plugins/calendars_full_week-0e0ce25b.css">
 <style>
     /*
-     * Same exact format as the original working CSS: plain custom classes
-     * with hardcoded hex, !important. Two slots share one class per color
-     * since they're always the same shade.
+     * FullCalendar's own bundled CSS (from the two stylesheets above) was
+     * quietly beating our Framework grayscale classes on specificity/order
+     * when applied straight to FullCalendar's .fc-event wrapper - even
+     * though the exact same classes work fine on a plain <div> (confirmed
+     * by testing outside FullCalendar). So instead of fighting that CSS,
+     * we neutralize FullCalendar's own event chrome entirely and render
+     * our own plain, uncontested inner <div> for every event (built in
+     * eventContent below) - structurally identical to the working plain
+     * <div class="bg--gray-25 text--white"> test.
+     */
+    #calendar-full-week .fc-event,
+    #calendar-full-week .fc-v-event,
+    #calendar-full-week .fc-timegrid-event,
+    #calendar-full-week .fc-daygrid-event {
+        background: none !important;
+        background-color: transparent !important;
+        background-image: none !important;
+        border: none !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+    }
+    #calendar-full-week .fc-event-fill {
+        display: block;
+        width: 100%;
+        height: 100%;
+        box-sizing: border-box;
+        padding: 2px 4px;
+        overflow: hidden;
+    }
+    /*
+     * Black, gray-30, and gray-55 are the exact non-dithered levels on a
+     * 2-bit panel, so plain hex renders them identically to the Framework
+     * tokens - kept as hardcoded hex since that's confirmed working.
+     * Gray-25 and gray-60 use the real bg--gray-25/bg--gray-60 Framework
+     * classes instead (set directly on .fc-event-fill in eventContent),
+     * since dithering for those two only exists in TRMNL's own CSS for
+     * those specific tokens - a flat hex color can't reproduce it.
      */
     #calendar-full-week .black-1,
     #calendar-full-week .black-2 {
         background-color: #000000 !important;
         border-color: #000000 !important;
-    }
-    #calendar-full-week .gray-25-1,
-    #calendar-full-week .gray-25-2 {
-        background-color: #404040 !important;
-        border-color: #404040 !important;
     }
     #calendar-full-week .gray-30-1,
     #calendar-full-week .gray-30-2 {
@@ -30,57 +59,19 @@
         background-color: #8c8c8c !important;
         border-color: #8c8c8c !important;
     }
-    #calendar-full-week .gray-60-1,
-    #calendar-full-week .gray-60-2 {
-        background-color: #999999 !important;
-        border-color: #999999 !important;
-    }
     #calendar-full-week .black-1,
     #calendar-full-week .black-2,
-    #calendar-full-week .gray-25-1,
-    #calendar-full-week .gray-25-2,
     #calendar-full-week .gray-30-1,
-    #calendar-full-week .gray-30-2,
-    #calendar-full-week .black-1 .fc-event-main,
-    #calendar-full-week .black-2 .fc-event-main,
-    #calendar-full-week .gray-25-1 .fc-event-main,
-    #calendar-full-week .gray-25-2 .fc-event-main,
-    #calendar-full-week .gray-30-1 .fc-event-main,
-    #calendar-full-week .gray-30-2 .fc-event-main,
-    #calendar-full-week .black-1 .fc-event-title,
-    #calendar-full-week .black-2 .fc-event-title,
-    #calendar-full-week .gray-25-1 .fc-event-title,
-    #calendar-full-week .gray-25-2 .fc-event-title,
-    #calendar-full-week .gray-30-1 .fc-event-title,
-    #calendar-full-week .gray-30-2 .fc-event-title {
+    #calendar-full-week .gray-30-2 {
         color: white !important;
         -webkit-text-stroke: 0 !important;
         text-shadow: none !important;
     }
     #calendar-full-week .gray-55-1,
-    #calendar-full-week .gray-55-2,
-    #calendar-full-week .gray-60-1,
-    #calendar-full-week .gray-60-2,
-    #calendar-full-week .gray-55-1 .fc-event-main,
-    #calendar-full-week .gray-55-2 .fc-event-main,
-    #calendar-full-week .gray-60-1 .fc-event-main,
-    #calendar-full-week .gray-60-2 .fc-event-main,
-    #calendar-full-week .gray-55-1 .fc-event-title,
-    #calendar-full-week .gray-55-2 .fc-event-title,
-    #calendar-full-week .gray-60-1 .fc-event-title,
-    #calendar-full-week .gray-60-2 .fc-event-title {
+    #calendar-full-week .gray-55-2 {
         color: black !important;
         -webkit-text-stroke: 0 !important;
         text-shadow: none !important;
-    }
-    #calendar-full-week .fc-v-event,
-    #calendar-full-week .fc-timegrid-event {
-        border-left: 0 !important;
-        border-inline-start: 0 !important;
-    }
-    #calendar-full-week .fc-event {
-        box-shadow: none !important;
-        background-image: none !important;
     }
     #calendar-full-week .fc-timegrid-now-indicator-line {
         height: 2px !important;
@@ -154,11 +145,10 @@
              * someone else's account with entirely different plugins:
              * their dropdown shows their own plugins.
              *
-             * Color is fixed per slot via a plain custom class (black-1,
-             * gray-25-2, etc.) matched against hardcoded hex rules in the
-             * <style> block above - same format as the original working
-             * version, just one shared rule per color instead of per
-             * fixed source name.
+             * Color is set via fillClass in extendedProps, read by
+             * eventContent below to build the actual filled <div> - not
+             * classNames on FullCalendar's own event wrapper, which its
+             * bundled CSS was overriding.
              *
              * NOTE: plugin_instance_select binds to the plugin instance
              * itself (same shape as a hardcoded private_plugin_XXXXXX
@@ -195,7 +185,7 @@
                             description: {{ event.description | default: "" | json }},
                             start: {{ startTime | json }},
                             end: {{ endTime | json }},
-                            classNames: ["black-1"]
+                            extendedProps: { fillClass: "black-1" }
                         },
                     {% endfor %}
                 {% endif %}
@@ -217,7 +207,7 @@
                             description: {{ event.description | default: "" | json }},
                             start: {{ startTime | json }},
                             end: {{ endTime | json }},
-                            classNames: ["black-2"]
+                            extendedProps: { fillClass: "black-2" }
                         },
                     {% endfor %}
                 {% endif %}
@@ -239,7 +229,7 @@
                             description: {{ event.description | default: "" | json }},
                             start: {{ startTime | json }},
                             end: {{ endTime | json }},
-                            classNames: ["gray-25-1"]
+                            extendedProps: { fillClass: "bg--gray-25 text--white" }
                         },
                     {% endfor %}
                 {% endif %}
@@ -261,7 +251,7 @@
                             description: {{ event.description | default: "" | json }},
                             start: {{ startTime | json }},
                             end: {{ endTime | json }},
-                            classNames: ["gray-25-2"]
+                            extendedProps: { fillClass: "bg--gray-25 text--white" }
                         },
                     {% endfor %}
                 {% endif %}
@@ -283,7 +273,7 @@
                             description: {{ event.description | default: "" | json }},
                             start: {{ startTime | json }},
                             end: {{ endTime | json }},
-                            classNames: ["gray-30-1"]
+                            extendedProps: { fillClass: "gray-30-1" }
                         },
                     {% endfor %}
                 {% endif %}
@@ -305,7 +295,7 @@
                             description: {{ event.description | default: "" | json }},
                             start: {{ startTime | json }},
                             end: {{ endTime | json }},
-                            classNames: ["gray-30-2"]
+                            extendedProps: { fillClass: "gray-30-2" }
                         },
                     {% endfor %}
                 {% endif %}
@@ -327,7 +317,7 @@
                             description: {{ event.description | default: "" | json }},
                             start: {{ startTime | json }},
                             end: {{ endTime | json }},
-                            classNames: ["gray-55-1"]
+                            extendedProps: { fillClass: "gray-55-1" }
                         },
                     {% endfor %}
                 {% endif %}
@@ -349,7 +339,7 @@
                             description: {{ event.description | default: "" | json }},
                             start: {{ startTime | json }},
                             end: {{ endTime | json }},
-                            classNames: ["gray-55-2"]
+                            extendedProps: { fillClass: "gray-55-2" }
                         },
                     {% endfor %}
                 {% endif %}
@@ -371,7 +361,7 @@
                             description: {{ event.description | default: "" | json }},
                             start: {{ startTime | json }},
                             end: {{ endTime | json }},
-                            classNames: ["gray-60-1"]
+                            extendedProps: { fillClass: "bg--gray-60 text--black" }
                         },
                     {% endfor %}
                 {% endif %}
@@ -393,12 +383,33 @@
                             description: {{ event.description | default: "" | json }},
                             start: {{ startTime | json }},
                             end: {{ endTime | json }},
-                            classNames: ["gray-60-2"]
+                            extendedProps: { fillClass: "bg--gray-60 text--black" }
                         },
                     {% endfor %}
                 {% endif %}
 
-            ]
+            ],
+
+            /*
+             * Renders each event as one plain, self-owned <div> - the same
+             * structure as the plain-div test that proved Framework
+             * classes (and dithering) work fine outside of FullCalendar's
+             * own markup. FullCalendar's default event chrome is
+             * neutralized in the <style> block above, so this div is the
+             * only thing painting each event's background/text.
+             */
+            eventContent: function (info) {
+                var fillClass = (info.event.extendedProps && info.event.extendedProps.fillClass) || "";
+                var fill = document.createElement("div");
+                fill.className = "fc-event-fill " + fillClass;
+
+                var title = document.createElement("div");
+                title.className = "fc-event-fill-title";
+                title.textContent = info.event.title || "";
+                fill.appendChild(title);
+
+                return { domNodes: [fill] };
+            }
         });
 
         calendar.render();
