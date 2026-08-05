@@ -140,15 +140,17 @@
             {% assign windowWidthMin = endTotalMin | minus: startTotalMin | plus: 1440 | modulo: 1440 %}
 
             {% comment %}
-                Checked against false/"false" explicitly (not truthiness of
-                auto_scroll_enabled directly) because a pre-existing plugin
-                instance won't have this field's value saved until the
-                settings form is opened and saved at least once - and an
-                unset/nil value is falsy in Liquid, which would otherwise
-                silently look identical to "disabled." This way an unset
-                value still behaves like the field's own default: true.
+                Checked broadly (not just `== false`) because Liquid's
+                truthiness is quirky - an empty string is actually truthy,
+                only nil/false are falsy - so if TRMNL sends the toggle's
+                "off" state as blank/empty rather than a literal false, a
+                plain false-only check silently never matches and the
+                window looks stuck in "enabled" mode no matter what the
+                switch shows. `blank` catches nil, "", and false in one
+                shot; the explicit string checks catch "false"/"off"/"no"/
+                "0" in case the off-value comes through as text instead.
             {% endcomment %}
-            {% if auto_scroll_enabled == false or auto_scroll_enabled == "false" %}
+            {% if auto_scroll_enabled == blank or auto_scroll_enabled == false or auto_scroll_enabled == "false" or auto_scroll_enabled == "off" or auto_scroll_enabled == "no" or auto_scroll_enabled == "0" %}
                 {% assign anchorMin = startTotalMin %}
             {% else %}
                 {% assign freqHours = auto_scroll_frequency | default: 6 | plus: 0 %}
