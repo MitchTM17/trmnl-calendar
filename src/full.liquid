@@ -126,31 +126,39 @@
                 All math is done in whole minutes (not hours) so it also
                 works if start/end aren't on the hour. Overnight windows
                 use FullCalendar's past-midnight notation ("26:00:00" etc)
-                so they render as one contiguous block. Zero-padding uses
-                the standard Liquid "prepend a 0, then take the last 2
-                characters" trick since Liquid has no built-in pad filter.
+                so they render as one contiguous block.
+
+                Only uses filters/tags already proven to work in this
+                exact plugin (split/first/last, append, plain if/else
+                comparisons) - deliberately avoiding slice, prepend,
+                capture, and the `blank` literal, since none of those were
+                ever confirmed to actually render here, and TRMNL is
+                already known to have a restricted Liquid dialect (its
+                array bracket indexing doesn't work either - first/last
+                is required there too). If the settings weren't visibly
+                changing anything, an unsupported tag/filter silently
+                failing the whole render (and TRMNL falling back to a
+                stale cached output) is the most likely explanation.
             {% endcomment %}
-            {% assign startHour = auto_scroll_start | default: "08:00" | slice: 0, 2 | plus: 0 %}
-            {% assign startMinutePart = auto_scroll_start | default: "08:00" | slice: 3, 2 | plus: 0 %}
-            {% assign endHour = auto_scroll_end | default: "20:00" | slice: 0, 2 | plus: 0 %}
-            {% assign endMinutePart = auto_scroll_end | default: "20:00" | slice: 3, 2 | plus: 0 %}
+            {% assign startParts = auto_scroll_start | default: "08:00" | split: ":" %}
+            {% assign startHour = startParts | first | plus: 0 %}
+            {% assign startMinutePart = startParts | last | plus: 0 %}
+            {% assign endParts = auto_scroll_end | default: "20:00" | split: ":" %}
+            {% assign endHour = endParts | first | plus: 0 %}
+            {% assign endMinutePart = endParts | last | plus: 0 %}
 
             {% assign startTotalMin = startHour | times: 60 | plus: startMinutePart %}
             {% assign endTotalMin = endHour | times: 60 | plus: endMinutePart %}
             {% assign windowWidthMin = endTotalMin | minus: startTotalMin | plus: 1440 | modulo: 1440 %}
 
             {% comment %}
-                Checked broadly (not just `== false`) because Liquid's
-                truthiness is quirky - an empty string is actually truthy,
-                only nil/false are falsy - so if TRMNL sends the toggle's
-                "off" state as blank/empty rather than a literal false, a
-                plain false-only check silently never matches and the
-                window looks stuck in "enabled" mode no matter what the
-                switch shows. `blank` catches nil, "", and false in one
-                shot; the explicit string checks catch "false"/"off"/"no"/
-                "0" in case the off-value comes through as text instead.
+                Checked broadly (not just == false) because Liquid's
+                truthiness is quirky - an empty string is truthy, only
+                nil/false are falsy - so if TRMNL sends the toggle's "off"
+                state as blank/empty rather than a literal false, a
+                false-only check would never match.
             {% endcomment %}
-            {% if auto_scroll_enabled == blank or auto_scroll_enabled == false or auto_scroll_enabled == "false" or auto_scroll_enabled == "off" or auto_scroll_enabled == "no" or auto_scroll_enabled == "0" %}
+            {% if auto_scroll_enabled == nil or auto_scroll_enabled == "" or auto_scroll_enabled == false or auto_scroll_enabled == "false" or auto_scroll_enabled == "off" or auto_scroll_enabled == "no" or auto_scroll_enabled == "0" %}
                 {% assign anchorMin = startTotalMin %}
             {% else %}
                 {% assign freqHours = auto_scroll_frequency | default: 6 | plus: 0 %}
@@ -169,15 +177,31 @@
 
             {% assign windowStartHourPart = anchorMin | divided_by: 60 %}
             {% assign windowStartMinutePart = anchorMin | modulo: 60 %}
-            {% assign windowStartHourStr = windowStartHourPart | prepend: "0" | slice: -2, 2 %}
-            {% assign windowStartMinuteStr = windowStartMinutePart | prepend: "0" | slice: -2, 2 %}
-            {% capture windowStart %}{{ windowStartHourStr }}:{{ windowStartMinuteStr }}:00{% endcapture %}
+            {% if windowStartHourPart < 10 %}
+                {% assign windowStartHourStr = "0" | append: windowStartHourPart %}
+            {% else %}
+                {% assign windowStartHourStr = windowStartHourPart | append: "" %}
+            {% endif %}
+            {% if windowStartMinutePart < 10 %}
+                {% assign windowStartMinuteStr = "0" | append: windowStartMinutePart %}
+            {% else %}
+                {% assign windowStartMinuteStr = windowStartMinutePart | append: "" %}
+            {% endif %}
+            {% assign windowStart = windowStartHourStr | append: ":" | append: windowStartMinuteStr | append: ":00" %}
 
             {% assign windowEndHourPart = windowEndMin | divided_by: 60 %}
             {% assign windowEndMinutePart = windowEndMin | modulo: 60 %}
-            {% assign windowEndHourStr = windowEndHourPart | prepend: "0" | slice: -2, 2 %}
-            {% assign windowEndMinuteStr = windowEndMinutePart | prepend: "0" | slice: -2, 2 %}
-            {% capture windowEnd %}{{ windowEndHourStr }}:{{ windowEndMinuteStr }}:00{% endcapture %}
+            {% if windowEndHourPart < 10 %}
+                {% assign windowEndHourStr = "0" | append: windowEndHourPart %}
+            {% else %}
+                {% assign windowEndHourStr = windowEndHourPart | append: "" %}
+            {% endif %}
+            {% if windowEndMinutePart < 10 %}
+                {% assign windowEndMinuteStr = "0" | append: windowEndMinutePart %}
+            {% else %}
+                {% assign windowEndMinuteStr = windowEndMinutePart | append: "" %}
+            {% endif %}
+            {% assign windowEnd = windowEndHourStr | append: ":" | append: windowEndMinuteStr | append: ":00" %}
 
             // CalDAV display settings
             firstDay: {{ caldav_405381.first_day | default: 0 }},
