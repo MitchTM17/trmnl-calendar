@@ -111,6 +111,6 @@ custom_fields:
   help_text: Leave unselected to skip this slot.
   optional: true
   group: Gray 60
-name: Calendar Renderer
+name: multicolor calendar
 description: ''
 refresh_interval: 15
