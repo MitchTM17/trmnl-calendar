@@ -1,0 +1,116 @@
+---
+strategy: plugin_merge
+no_screen_padding: 'yes'
+dark_mode: 'no'
+static_data: ''
+polling_verb: get
+framework_version: 3.2.0
+serverless_language: node
+polling_url: ''
+polling_headers: ''
+polling_body: ''
+id: 405637
+oauth_enabled: 'false'
+oauth_pkce_enabled: 'no'
+oauth_authorize_url: ''
+oauth_token_url: ''
+oauth_scopes: ''
+oauth_scope_separator: ''
+oauth_refresh_url: ''
+oauth_auth_params: ''
+oauth_token_headers: ''
+oauth_token_site: ''
+oauth_token_params: ''
+oauth_token_request_auth_method: ''
+oauth_body_format: ''
+oauth_token_response_metadata: ''
+oauth_authorization_method: ''
+oauth_refresh_params: ''
+oauth_token_field_name: ''
+oauth_expiry_field_name: ''
+oauth_expiry_strategy: ''
+oauth_fixed_expiry_ms: ''
+custom_fields:
+- keyname: black_1_source
+  field_type: plugin_instance_select
+  name: Black - Calendar 1
+  plugin_keyname: private_plugin
+  description: Pick one of your private plugins to render in black.
+  help_text: Leave unselected to skip this slot.
+  optional: true
+  group: Black
+- keyname: black_2_source
+  field_type: plugin_instance_select
+  name: Black - Calendar 2
+  plugin_keyname: private_plugin
+  description: Pick another private plugin to also render in black.
+  help_text: Leave unselected to skip this slot.
+  optional: true
+  group: Black
+- keyname: gray_25_1_source
+  field_type: plugin_instance_select
+  name: Gray 25 - Calendar 1
+  plugin_keyname: private_plugin
+  description: Pick one of your private plugins to render in gray-25.
+  help_text: Leave unselected to skip this slot.
+  optional: true
+  group: Gray 25
+- keyname: gray_25_2_source
+  field_type: plugin_instance_select
+  name: Gray 25 - Calendar 2
+  plugin_keyname: private_plugin
+  description: Pick another private plugin to also render in gray-25.
+  help_text: Leave unselected to skip this slot.
+  optional: true
+  group: Gray 25
+- keyname: gray_30_1_source
+  field_type: plugin_instance_select
+  name: Gray 30 - Calendar 1
+  plugin_keyname: private_plugin
+  description: Pick one of your private plugins to render in gray-30.
+  help_text: Leave unselected to skip this slot.
+  optional: true
+  group: Gray 30
+- keyname: gray_30_2_source
+  field_type: plugin_instance_select
+  name: Gray 30 - Calendar 2
+  plugin_keyname: private_plugin
+  description: Pick another private plugin to also render in gray-30.
+  help_text: Leave unselected to skip this slot.
+  optional: true
+  group: Gray 30
+- keyname: gray_55_1_source
+  field_type: plugin_instance_select
+  name: Gray 55 - Calendar 1
+  plugin_keyname: private_plugin
+  description: Pick one of your private plugins to render in gray-55.
+  help_text: Leave unselected to skip this slot.
+  optional: true
+  group: Gray 55
+- keyname: gray_55_2_source
+  field_type: plugin_instance_select
+  name: Gray 55 - Calendar 2
+  plugin_keyname: private_plugin
+  description: Pick another private plugin to also render in gray-55.
+  help_text: Leave unselected to skip this slot.
+  optional: true
+  group: Gray 55
+- keyname: gray_60_1_source
+  field_type: plugin_instance_select
+  name: Gray 60 - Calendar 1
+  plugin_keyname: private_plugin
+  description: Pick one of your private plugins to render in gray-60.
+  help_text: Leave unselected to skip this slot.
+  optional: true
+  group: Gray 60
+- keyname: gray_60_2_source
+  field_type: plugin_instance_select
+  name: Gray 60 - Calendar 2
+  plugin_keyname: private_plugin
+  description: Pick another private plugin to also render in gray-60.
+  help_text: Leave unselected to skip this slot.
+  optional: true
+  group: Gray 60
+name: Calendar Renderer
+description: ''
+refresh_interval: 15
