@@ -1,0 +1,430 @@
+<link
+    rel="stylesheet"
+    href="https://trmnl.com/assets/plugins/calendars-8cda8897.css">
+<link
+    rel="stylesheet"
+    href="https://trmnl.com/assets/plugins/calendars_full_week-0e0ce25b.css">
+<style>
+    /*
+     * Same exact format as the original working CSS: plain custom classes
+     * with hardcoded hex, !important. Two slots share one class per color
+     * since they're always the same shade.
+     */
+    #calendar-full-week .black-1,
+    #calendar-full-week .black-2 {
+        background-color: #000000 !important;
+        border-color: #000000 !important;
+    }
+    #calendar-full-week .gray-25-1,
+    #calendar-full-week .gray-25-2 {
+        background-color: #404040 !important;
+        border-color: #404040 !important;
+    }
+    #calendar-full-week .gray-30-1,
+    #calendar-full-week .gray-30-2 {
+        background-color: #4d4d4d !important;
+        border-color: #4d4d4d !important;
+    }
+    #calendar-full-week .gray-55-1,
+    #calendar-full-week .gray-55-2 {
+        background-color: #8c8c8c !important;
+        border-color: #8c8c8c !important;
+    }
+    #calendar-full-week .gray-60-1,
+    #calendar-full-week .gray-60-2 {
+        background-color: #999999 !important;
+        border-color: #999999 !important;
+    }
+    #calendar-full-week .black-1,
+    #calendar-full-week .black-2,
+    #calendar-full-week .gray-25-1,
+    #calendar-full-week .gray-25-2,
+    #calendar-full-week .gray-30-1,
+    #calendar-full-week .gray-30-2,
+    #calendar-full-week .black-1 .fc-event-main,
+    #calendar-full-week .black-2 .fc-event-main,
+    #calendar-full-week .gray-25-1 .fc-event-main,
+    #calendar-full-week .gray-25-2 .fc-event-main,
+    #calendar-full-week .gray-30-1 .fc-event-main,
+    #calendar-full-week .gray-30-2 .fc-event-main,
+    #calendar-full-week .black-1 .fc-event-title,
+    #calendar-full-week .black-2 .fc-event-title,
+    #calendar-full-week .gray-25-1 .fc-event-title,
+    #calendar-full-week .gray-25-2 .fc-event-title,
+    #calendar-full-week .gray-30-1 .fc-event-title,
+    #calendar-full-week .gray-30-2 .fc-event-title {
+        color: white !important;
+        -webkit-text-stroke: 0 !important;
+        text-shadow: none !important;
+    }
+    #calendar-full-week .gray-55-1,
+    #calendar-full-week .gray-55-2,
+    #calendar-full-week .gray-60-1,
+    #calendar-full-week .gray-60-2,
+    #calendar-full-week .gray-55-1 .fc-event-main,
+    #calendar-full-week .gray-55-2 .fc-event-main,
+    #calendar-full-week .gray-60-1 .fc-event-main,
+    #calendar-full-week .gray-60-2 .fc-event-main,
+    #calendar-full-week .gray-55-1 .fc-event-title,
+    #calendar-full-week .gray-55-2 .fc-event-title,
+    #calendar-full-week .gray-60-1 .fc-event-title,
+    #calendar-full-week .gray-60-2 .fc-event-title {
+        color: black !important;
+        -webkit-text-stroke: 0 !important;
+        text-shadow: none !important;
+    }
+    #calendar-full-week .fc-v-event,
+    #calendar-full-week .fc-timegrid-event {
+        border-left: 0 !important;
+        border-inline-start: 0 !important;
+    }
+    #calendar-full-week .fc-event {
+        box-shadow: none !important;
+        background-image: none !important;
+    }
+    #calendar-full-week .fc-timegrid-now-indicator-line {
+        height: 2px !important;
+        background-color: black !important;
+        border: 0 !important;
+        z-index: 10 !important;
+    }
+    #calendar-full-week .fc-timegrid-now-indicator-arrow {
+        border-left-color: black !important;
+        border-right-color: black !important;
+        z-index: 10 !important;
+    }
+</style>
+<div
+    id="calendar-full-week"
+    class="trmnl-calendar trmnl-calendar--week highlight-today no-weekend-shading now-indicator-full-week">
+</div>
+<script src="https://usetrmnl.com/fullcalendar/index.global.min.js"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        var calendarEl = document.getElementById("calendar-full-week");
+        if (!calendarEl || typeof FullCalendar === "undefined") {
+            return;
+        }
+
+        var calendar = new FullCalendar.Calendar(calendarEl, {
+            /*
+             * Already converted to the user's local time (see the per-slot
+             * conversion below). timeZone: "UTC" tells FullCalendar to
+             * treat every timestamp as a literal wall-clock value instead
+             * of re-converting it, which is what keeps event times from
+             * shifting by a few hours.
+             */
+            now: "{{ trmnl.system.timestamp_utc | plus: trmnl.user.utc_offset | date: '%Y-%m-%dT%H:%M:%S' }}",
+            timeZone: "UTC",
+
+            // CalDAV display settings
+            firstDay: {{ caldav_405381.first_day | default: 0 }},
+            scrollTime: {{ caldav_405381.scroll_time | default: "09:00" | json }},
+            slotMinTime: {{ caldav_405381.scroll_time | default: "09:00" | json }},
+            slotMaxTime: {{ caldav_405381.scroll_time_end | default: "22:00" | json }},
+
+            // Week-view layout
+            headerToolbar: false,
+            initialView: "timeGridWeek",
+            contentHeight: "100%",
+            expandRows: true,
+            allDaySlot: true,
+            slotDuration: "00:30:00",
+            nowIndicator: true,
+            displayEventTime: false,
+
+            slotLabelFormat: {
+                hour: "numeric",
+                meridiem: "short",
+                hour12: {% if caldav_405381.time_format == "am/pm" %}true{% else %}false{% endif %}
+            },
+            eventTimeFormat: {
+                hour: "numeric",
+                minute: "2-digit",
+                hour12: {% if caldav_405381.time_format == "am/pm" %}true{% else %}false{% endif %}
+            },
+
+            /*
+             * 10 fixed calendar slots, 2 per color (black, gray-25,
+             * gray-30, gray-55, gray-60 - white is the page background, so
+             * it's not offered as an event color). Each slot's data source
+             * is picked by the VIEWING USER via a plugin_instance_select
+             * dropdown in the settings form - not a hardcoded plugin name.
+             * That's what lets this same template work unmodified for
+             * someone else's account with entirely different plugins:
+             * their dropdown shows their own plugins.
+             *
+             * Color is fixed per slot via a plain custom class (black-1,
+             * gray-25-2, etc.) matched against hardcoded hex rules in the
+             * <style> block above - same format as the original working
+             * version, just one shared rule per color instead of per
+             * fixed source name.
+             *
+             * NOTE: plugin_instance_select binds to the plugin instance
+             * itself (same shape as a hardcoded private_plugin_XXXXXX
+             * reference), so events live under .merge_variables.events,
+             * not directly under .events.
+             *
+             * Trailing commas after each event are intentional and
+             * harmless - JS allows them, so no "is this the last item"
+             * bookkeeping is needed.
+             *
+             * Times: raw event times come back as absolute UTC instants
+             * (e.g. "...T03:45:00.000Z"). Since FullCalendar is set to
+             * timeZone: "UTC" and expects literal wall-clock strings, each
+             * time is converted to epoch seconds, shifted by the user's
+             * UTC offset, then reformatted with no "Z"/offset suffix.
+             * All-day events are left alone (date-only, no time to shift).
+             */
+            events: [
+
+                {% comment %} ---------- Black - Calendar 1 ---------- {% endcomment %}
+                {% if black_1_source %}
+                    {% for event in black_1_source.merge_variables.events %}
+                        {% assign startTime = event.start_full | default: event.date_time %}
+                        {% unless event.all_day %}
+                            {% assign startTime = startTime | date: '%s' | plus: trmnl.user.utc_offset | date: '%Y-%m-%dT%H:%M:%S' %}
+                        {% endunless %}
+                        {% assign endTime = event.end_full | default: event.end %}
+                        {% unless event.all_day %}
+                            {% assign endTime = endTime | date: '%s' | plus: trmnl.user.utc_offset | date: '%Y-%m-%dT%H:%M:%S' %}
+                        {% endunless %}
+                        {
+                            allDay: {% if event.all_day %}true{% else %}false{% endif %},
+                            title: {{ event.summary | default: "" | json }},
+                            description: {{ event.description | default: "" | json }},
+                            start: {{ startTime | json }},
+                            end: {{ endTime | json }},
+                            classNames: ["black-1"]
+                        },
+                    {% endfor %}
+                {% endif %}
+
+                {% comment %} ---------- Black - Calendar 2 ---------- {% endcomment %}
+                {% if black_2_source %}
+                    {% for event in black_2_source.merge_variables.events %}
+                        {% assign startTime = event.start_full | default: event.date_time %}
+                        {% unless event.all_day %}
+                            {% assign startTime = startTime | date: '%s' | plus: trmnl.user.utc_offset | date: '%Y-%m-%dT%H:%M:%S' %}
+                        {% endunless %}
+                        {% assign endTime = event.end_full | default: event.end %}
+                        {% unless event.all_day %}
+                            {% assign endTime = endTime | date: '%s' | plus: trmnl.user.utc_offset | date: '%Y-%m-%dT%H:%M:%S' %}
+                        {% endunless %}
+                        {
+                            allDay: {% if event.all_day %}true{% else %}false{% endif %},
+                            title: {{ event.summary | default: "" | json }},
+                            description: {{ event.description | default: "" | json }},
+                            start: {{ startTime | json }},
+                            end: {{ endTime | json }},
+                            classNames: ["black-2"]
+                        },
+                    {% endfor %}
+                {% endif %}
+
+                {% comment %} ---------- Gray 25 - Calendar 1 ---------- {% endcomment %}
+                {% if gray_25_1_source %}
+                    {% for event in gray_25_1_source.merge_variables.events %}
+                        {% assign startTime = event.start_full | default: event.date_time %}
+                        {% unless event.all_day %}
+                            {% assign startTime = startTime | date: '%s' | plus: trmnl.user.utc_offset | date: '%Y-%m-%dT%H:%M:%S' %}
+                        {% endunless %}
+                        {% assign endTime = event.end_full | default: event.end %}
+                        {% unless event.all_day %}
+                            {% assign endTime = endTime | date: '%s' | plus: trmnl.user.utc_offset | date: '%Y-%m-%dT%H:%M:%S' %}
+                        {% endunless %}
+                        {
+                            allDay: {% if event.all_day %}true{% else %}false{% endif %},
+                            title: {{ event.summary | default: "" | json }},
+                            description: {{ event.description | default: "" | json }},
+                            start: {{ startTime | json }},
+                            end: {{ endTime | json }},
+                            classNames: ["gray-25-1"]
+                        },
+                    {% endfor %}
+                {% endif %}
+
+                {% comment %} ---------- Gray 25 - Calendar 2 ---------- {% endcomment %}
+                {% if gray_25_2_source %}
+                    {% for event in gray_25_2_source.merge_variables.events %}
+                        {% assign startTime = event.start_full | default: event.date_time %}
+                        {% unless event.all_day %}
+                            {% assign startTime = startTime | date: '%s' | plus: trmnl.user.utc_offset | date: '%Y-%m-%dT%H:%M:%S' %}
+                        {% endunless %}
+                        {% assign endTime = event.end_full | default: event.end %}
+                        {% unless event.all_day %}
+                            {% assign endTime = endTime | date: '%s' | plus: trmnl.user.utc_offset | date: '%Y-%m-%dT%H:%M:%S' %}
+                        {% endunless %}
+                        {
+                            allDay: {% if event.all_day %}true{% else %}false{% endif %},
+                            title: {{ event.summary | default: "" | json }},
+                            description: {{ event.description | default: "" | json }},
+                            start: {{ startTime | json }},
+                            end: {{ endTime | json }},
+                            classNames: ["gray-25-2"]
+                        },
+                    {% endfor %}
+                {% endif %}
+
+                {% comment %} ---------- Gray 30 - Calendar 1 ---------- {% endcomment %}
+                {% if gray_30_1_source %}
+                    {% for event in gray_30_1_source.merge_variables.events %}
+                        {% assign startTime = event.start_full | default: event.date_time %}
+                        {% unless event.all_day %}
+                            {% assign startTime = startTime | date: '%s' | plus: trmnl.user.utc_offset | date: '%Y-%m-%dT%H:%M:%S' %}
+                        {% endunless %}
+                        {% assign endTime = event.end_full | default: event.end %}
+                        {% unless event.all_day %}
+                            {% assign endTime = endTime | date: '%s' | plus: trmnl.user.utc_offset | date: '%Y-%m-%dT%H:%M:%S' %}
+                        {% endunless %}
+                        {
+                            allDay: {% if event.all_day %}true{% else %}false{% endif %},
+                            title: {{ event.summary | default: "" | json }},
+                            description: {{ event.description | default: "" | json }},
+                            start: {{ startTime | json }},
+                            end: {{ endTime | json }},
+                            classNames: ["gray-30-1"]
+                        },
+                    {% endfor %}
+                {% endif %}
+
+                {% comment %} ---------- Gray 30 - Calendar 2 ---------- {% endcomment %}
+                {% if gray_30_2_source %}
+                    {% for event in gray_30_2_source.merge_variables.events %}
+                        {% assign startTime = event.start_full | default: event.date_time %}
+                        {% unless event.all_day %}
+                            {% assign startTime = startTime | date: '%s' | plus: trmnl.user.utc_offset | date: '%Y-%m-%dT%H:%M:%S' %}
+                        {% endunless %}
+                        {% assign endTime = event.end_full | default: event.end %}
+                        {% unless event.all_day %}
+                            {% assign endTime = endTime | date: '%s' | plus: trmnl.user.utc_offset | date: '%Y-%m-%dT%H:%M:%S' %}
+                        {% endunless %}
+                        {
+                            allDay: {% if event.all_day %}true{% else %}false{% endif %},
+                            title: {{ event.summary | default: "" | json }},
+                            description: {{ event.description | default: "" | json }},
+                            start: {{ startTime | json }},
+                            end: {{ endTime | json }},
+                            classNames: ["gray-30-2"]
+                        },
+                    {% endfor %}
+                {% endif %}
+
+                {% comment %} ---------- Gray 55 - Calendar 1 ---------- {% endcomment %}
+                {% if gray_55_1_source %}
+                    {% for event in gray_55_1_source.merge_variables.events %}
+                        {% assign startTime = event.start_full | default: event.date_time %}
+                        {% unless event.all_day %}
+                            {% assign startTime = startTime | date: '%s' | plus: trmnl.user.utc_offset | date: '%Y-%m-%dT%H:%M:%S' %}
+                        {% endunless %}
+                        {% assign endTime = event.end_full | default: event.end %}
+                        {% unless event.all_day %}
+                            {% assign endTime = endTime | date: '%s' | plus: trmnl.user.utc_offset | date: '%Y-%m-%dT%H:%M:%S' %}
+                        {% endunless %}
+                        {
+                            allDay: {% if event.all_day %}true{% else %}false{% endif %},
+                            title: {{ event.summary | default: "" | json }},
+                            description: {{ event.description | default: "" | json }},
+                            start: {{ startTime | json }},
+                            end: {{ endTime | json }},
+                            classNames: ["gray-55-1"]
+                        },
+                    {% endfor %}
+                {% endif %}
+
+                {% comment %} ---------- Gray 55 - Calendar 2 ---------- {% endcomment %}
+                {% if gray_55_2_source %}
+                    {% for event in gray_55_2_source.merge_variables.events %}
+                        {% assign startTime = event.start_full | default: event.date_time %}
+                        {% unless event.all_day %}
+                            {% assign startTime = startTime | date: '%s' | plus: trmnl.user.utc_offset | date: '%Y-%m-%dT%H:%M:%S' %}
+                        {% endunless %}
+                        {% assign endTime = event.end_full | default: event.end %}
+                        {% unless event.all_day %}
+                            {% assign endTime = endTime | date: '%s' | plus: trmnl.user.utc_offset | date: '%Y-%m-%dT%H:%M:%S' %}
+                        {% endunless %}
+                        {
+                            allDay: {% if event.all_day %}true{% else %}false{% endif %},
+                            title: {{ event.summary | default: "" | json }},
+                            description: {{ event.description | default: "" | json }},
+                            start: {{ startTime | json }},
+                            end: {{ endTime | json }},
+                            classNames: ["gray-55-2"]
+                        },
+                    {% endfor %}
+                {% endif %}
+
+                {% comment %} ---------- Gray 60 - Calendar 1 ---------- {% endcomment %}
+                {% if gray_60_1_source %}
+                    {% for event in gray_60_1_source.merge_variables.events %}
+                        {% assign startTime = event.start_full | default: event.date_time %}
+                        {% unless event.all_day %}
+                            {% assign startTime = startTime | date: '%s' | plus: trmnl.user.utc_offset | date: '%Y-%m-%dT%H:%M:%S' %}
+                        {% endunless %}
+                        {% assign endTime = event.end_full | default: event.end %}
+                        {% unless event.all_day %}
+                            {% assign endTime = endTime | date: '%s' | plus: trmnl.user.utc_offset | date: '%Y-%m-%dT%H:%M:%S' %}
+                        {% endunless %}
+                        {
+                            allDay: {% if event.all_day %}true{% else %}false{% endif %},
+                            title: {{ event.summary | default: "" | json }},
+                            description: {{ event.description | default: "" | json }},
+                            start: {{ startTime | json }},
+                            end: {{ endTime | json }},
+                            classNames: ["gray-60-1"]
+                        },
+                    {% endfor %}
+                {% endif %}
+
+                {% comment %} ---------- Gray 60 - Calendar 2 ---------- {% endcomment %}
+                {% if gray_60_2_source %}
+                    {% for event in gray_60_2_source.merge_variables.events %}
+                        {% assign startTime = event.start_full | default: event.date_time %}
+                        {% unless event.all_day %}
+                            {% assign startTime = startTime | date: '%s' | plus: trmnl.user.utc_offset | date: '%Y-%m-%dT%H:%M:%S' %}
+                        {% endunless %}
+                        {% assign endTime = event.end_full | default: event.end %}
+                        {% unless event.all_day %}
+                            {% assign endTime = endTime | date: '%s' | plus: trmnl.user.utc_offset | date: '%Y-%m-%dT%H:%M:%S' %}
+                        {% endunless %}
+                        {
+                            allDay: {% if event.all_day %}true{% else %}false{% endif %},
+                            title: {{ event.summary | default: "" | json }},
+                            description: {{ event.description | default: "" | json }},
+                            start: {{ startTime | json }},
+                            end: {{ endTime | json }},
+                            classNames: ["gray-60-2"]
+                        },
+                    {% endfor %}
+                {% endif %}
+
+            ]
+        });
+
+        calendar.render();
+
+        // Keep the current-time line spanning only the day columns.
+        function updateNowIndicatorWidth() {
+            try {
+                var dayColumns = calendarEl.querySelectorAll("td.fc-timegrid-col:not(.fc-timegrid-axis)");
+                var todayColumn = calendarEl.querySelector(".fc-day-today.fc-timegrid-col");
+                if (!dayColumns.length || !todayColumn) {
+                    return;
+                }
+                var firstBox = dayColumns[0].getBoundingClientRect();
+                var lastBox = dayColumns[dayColumns.length - 1].getBoundingClientRect();
+                var todayBox = todayColumn.getBoundingClientRect();
+
+                calendarEl.style.setProperty("--now-indicator-left-offset", (todayBox.left - firstBox.left) + "px");
+                calendarEl.style.setProperty("--now-indicator-total-width", (lastBox.right - firstBox.left) + "px");
+            } catch (error) {
+                // Ignore measurement errors during initial rendering.
+            }
+        }
+
+        requestAnimationFrame(updateNowIndicatorWidth);
+        if (window.ResizeObserver) {
+            new ResizeObserver(updateNowIndicatorWidth).observe(calendarEl);
+        }
+    });
+</script>
