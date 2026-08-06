@@ -47,7 +47,7 @@ custom_fields:
 - keyname: auto_scroll_end
   field_type: time
   name: End Time
-  description: End of the visible window. (End - Start) sets the window's width.
+  description: End of the visible window. (End - Start) sets the window's length.
   default: '20:00'
   group: Auto-Scroll Window
 - keyname: time_format
