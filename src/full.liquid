@@ -109,45 +109,72 @@
             timeZone: "UTC",
 
             {% comment %}
-                STEP 2 of the backtrack plan: confirmed-working rotation
-                (STEP 1) now wrapped in a plain if/else on the
-                auto_scroll_enabled toggle. If it's not "true", skip the
-                rotation entirely and just use the fixed 08:00-20:00
-                default. Next step after this is confirmed: swap the
-                hardcoded 08:00/20:00 default for the custom start/end
-                fields.
-
-                IMPORTANT (confirmed via debug dump): boolean fields don't
-                get aliased to a bare top-level variable the way other
-                field types do here - the bare `auto_scroll_enabled` is
-                always blank. The real value only shows up at
-                trmnl.plugin_settings.custom_fields_values.auto_scroll_enabled,
-                and it comes through as the literal string "true"/"false"
-                (not a real boolean), so it's compared as a string below.
+                STEP 3 of the backtrack plan: swap the hardcoded 08:00/20:00
+                anchor+width for the custom_fields Start Time/End Time,
+                keeping rotation frequency hardcoded at 6h for now (that's
+                the next step). Everything reads from the qualified
+                trmnl.plugin_settings.custom_fields_values.* path, not bare
+                keynames - confirmed via debug dump that bare keynames
+                don't reliably alias for every field type here, so this
+                sticks to the one path we've proven actually works.
             {% endcomment %}
             {% assign scrollEnabledValue = trmnl.plugin_settings.custom_fields_values.auto_scroll_enabled %}
+            {% assign startValue = trmnl.plugin_settings.custom_fields_values.auto_scroll_start | default: "08:00" %}
+            {% assign endValue = trmnl.plugin_settings.custom_fields_values.auto_scroll_end | default: "20:00" %}
+
+            {% assign startParts = startValue | split: ":" %}
+            {% assign startHour = startParts | first | plus: 0 %}
+            {% assign startMinutePart = startParts | last | plus: 0 %}
+            {% assign endParts = endValue | split: ":" %}
+            {% assign endHour = endParts | first | plus: 0 %}
+            {% assign endMinutePart = endParts | last | plus: 0 %}
+
+            {% assign startTotalMin = startHour | times: 60 | plus: startMinutePart %}
+            {% assign endTotalMin = endHour | times: 60 | plus: endMinutePart %}
+            {% assign windowWidthMin = endTotalMin | minus: startTotalMin | plus: 1440 | modulo: 1440 %}
+
             {% if scrollEnabledValue == "true" %}
-                {% assign localHour = trmnl.system.timestamp_utc | plus: trmnl.user.utc_offset | date: '%H' | plus: 0 %}
-                {% assign shiftedHour = localHour | minus: 2 | plus: 24 | modulo: 24 %}
-                {% assign bucketIndex = shiftedHour | divided_by: 6 %}
-                {% case bucketIndex %}
-                    {% when 0 %}
-                        {% assign windowStart = "02:00:00" %}
-                        {% assign windowEnd = "14:00:00" %}
-                    {% when 1 %}
-                        {% assign windowStart = "08:00:00" %}
-                        {% assign windowEnd = "20:00:00" %}
-                    {% when 2 %}
-                        {% assign windowStart = "14:00:00" %}
-                        {% assign windowEnd = "26:00:00" %}
-                    {% else %}
-                        {% assign windowStart = "20:00:00" %}
-                        {% assign windowEnd = "32:00:00" %}
-                {% endcase %}
+                {% assign freqMin = 360 %}
+                {% assign nowHour = trmnl.system.timestamp_utc | plus: trmnl.user.utc_offset | date: '%H' | plus: 0 %}
+                {% assign nowMinutePart = trmnl.system.timestamp_utc | plus: trmnl.user.utc_offset | date: '%M' | plus: 0 %}
+                {% assign nowTotalMin = nowHour | times: 60 | plus: nowMinutePart %}
+
+                {% assign shiftedMin = nowTotalMin | minus: startTotalMin | plus: 1440 | modulo: 1440 %}
+                {% assign bucketIndex = shiftedMin | divided_by: freqMin %}
+                {% assign bucketOffsetMin = bucketIndex | times: freqMin %}
+                {% assign anchorMin = startTotalMin | plus: bucketOffsetMin | modulo: 1440 %}
             {% else %}
-                {% assign windowStart = "08:00:00" %}
-                {% assign windowEnd = "20:00:00" %}
+                {% assign anchorMin = startTotalMin %}
             {% endif %}
+            {% assign windowEndMin = anchorMin | plus: windowWidthMin %}
+
+            {% assign windowStartHourPart = anchorMin | divided_by: 60 %}
+            {% assign windowStartMinutePart = anchorMin | modulo: 60 %}
+            {% if windowStartHourPart < 10 %}
+                {% assign windowStartHourStr = "0" | append: windowStartHourPart %}
+            {% else %}
+                {% assign windowStartHourStr = windowStartHourPart | append: "" %}
+            {% endif %}
+            {% if windowStartMinutePart < 10 %}
+                {% assign windowStartMinuteStr = "0" | append: windowStartMinutePart %}
+            {% else %}
+                {% assign windowStartMinuteStr = windowStartMinutePart | append: "" %}
+            {% endif %}
+            {% assign windowStart = windowStartHourStr | append: ":" | append: windowStartMinuteStr | append: ":00" %}
+
+            {% assign windowEndHourPart = windowEndMin | divided_by: 60 %}
+            {% assign windowEndMinutePart = windowEndMin | modulo: 60 %}
+            {% if windowEndHourPart < 10 %}
+                {% assign windowEndHourStr = "0" | append: windowEndHourPart %}
+            {% else %}
+                {% assign windowEndHourStr = windowEndHourPart | append: "" %}
+            {% endif %}
+            {% if windowEndMinutePart < 10 %}
+                {% assign windowEndMinuteStr = "0" | append: windowEndMinutePart %}
+            {% else %}
+                {% assign windowEndMinuteStr = windowEndMinutePart | append: "" %}
+            {% endif %}
+            {% assign windowEnd = windowEndHourStr | append: ":" | append: windowEndMinuteStr | append: ":00" %}
 
             // CalDAV display settings
             firstDay: {{ caldav_405381.first_day | default: 0 }},
