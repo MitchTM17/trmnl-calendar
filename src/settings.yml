@@ -50,6 +50,79 @@ custom_fields:
   description: End of the visible window. (End - Start) sets the window's width.
   default: '20:00'
   group: Auto-Scroll Window
+- keyname: time_format
+  field_type: select
+  name: Time Format
+  options:
+  - 12-hour (AM/PM): am/pm
+  - 24-hour: 24h
+  default: am/pm
+  group: Date & Time
+- keyname: time_zone_override
+  field_type: number
+  name: Time Zone Override (UTC offset in hours)
+  description: Leave blank to use your TRMNL account's timezone.
+  help_text: Manual offset only - doesn't auto-adjust for daylight saving. E.g. -5 for US Eastern Standard Time.
+  placeholder: -5
+  step: 0.5
+  min: -12
+  max: 14
+  optional: true
+  group: Date & Time
+- keyname: include_event_time
+  field_type: boolean
+  name: Include Event Time
+  description: Show each event's start/end time on its calendar block.
+  default: false
+  group: Date & Time
+- keyname: first_day
+  field_type: select
+  name: Week Starts On
+  options:
+  - Sunday: 0
+  - Monday: 1
+  default: 0
+  group: Calendar Display
+- keyname: show_week_numbers
+  field_type: boolean
+  name: Show Week Numbers
+  description: Display the ISO week number in the corner of the calendar.
+  default: false
+  group: Calendar Display
+- keyname: show_now_indicator
+  field_type: boolean
+  name: Show Current Time Indicator
+  description: Display a line marking the current time.
+  default: true
+  group: Calendar Display
+- keyname: now_indicator_layer
+  field_type: select
+  name: Time Indicator Layer
+  options:
+  - Above events: above
+  - Behind events: behind
+  default: above
+  group: Calendar Display
+- keyname: now_indicator_span
+  field_type: select
+  name: Time Indicator Span
+  options:
+  - Full week: full_week
+  - Current day only: day
+  default: full_week
+  group: Calendar Display
+- keyname: highlight_today
+  field_type: boolean
+  name: Highlight Today
+  description: Visually emphasize today's date with an inverted label.
+  default: true
+  group: Calendar Display
+- keyname: shade_weekends
+  field_type: boolean
+  name: Shade Weekends
+  description: Fill Saturday and Sunday columns with a gray background.
+  default: false
+  group: Calendar Display
 - keyname: black_1_source
   field_type: plugin_instance_select
   name: Black - Calendar 1
