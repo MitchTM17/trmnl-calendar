@@ -5,8 +5,7 @@
     rel="stylesheet"
     href="https://trmnl.com/assets/plugins/calendars_full_week-0e0ce25b.css">
 <style>
-    /* FullCalendar's bundled CSS overrides color classes on .fc-event, 
-    so we color events ourselves via eventContent below. */
+    /* FullCalendar's bundled CSS overrides color classes on .fc-event, so we strip its default chrome and paint events ourselves via eventContent below. */
     #calendar-full-week .fc-event,
     #calendar-full-week .fc-v-event,
     #calendar-full-week .fc-timegrid-event,
@@ -27,8 +26,7 @@
         overflow: hidden;
     }
 
-    /* Black/gray-30/gray-55 are native 2-bit levels, so hex works. 
-    Gray-25/gray-60 need TRMNL's own bg--gray-* classes to properly utilize dithering. */
+    /* Black/gray-30/gray-55 are native 2-bit levels, so hex works. Gray-25/gray-60 need TRMNL's own bg--gray-* classes to get dithering. */
     #calendar-full-week .black-1,
     #calendar-full-week .black-2 {
         background-color: #000000 !important;
@@ -59,21 +57,25 @@
         text-shadow: none !important;
     }
 
+    {% comment %} Time Indicator Layer: "above" events (default) or "behind" them. {% endcomment %}
     #calendar-full-week .fc-timegrid-now-indicator-line {
         height: 2px !important;
         background-color: black !important;
         border: 0 !important;
-        z-index: 10 !important;
+        z-index: {% if trmnl.plugin_settings.custom_fields_values.now_indicator_layer == "behind" %}1{% else %}10{% endif %} !important;
     }
     #calendar-full-week .fc-timegrid-now-indicator-arrow {
         border-left-color: black !important;
         border-right-color: black !important;
-        z-index: 10 !important;
+        z-index: {% if trmnl.plugin_settings.custom_fields_values.now_indicator_layer == "behind" %}1{% else %}10{% endif %} !important;
     }
 </style>
 <div
     id="calendar-full-week"
-    class="trmnl-calendar trmnl-calendar--week highlight-today no-weekend-shading now-indicator-full-week">
+    class="trmnl-calendar trmnl-calendar--week
+        {% unless trmnl.plugin_settings.custom_fields_values.highlight_today == "false" %}highlight-today{% endunless %}
+        {% unless trmnl.plugin_settings.custom_fields_values.shade_weekends == "true" %}no-weekend-shading{% endunless %}
+        {% unless trmnl.plugin_settings.custom_fields_values.now_indicator_span == "day" %}now-indicator-full-week{% endunless %}">
 </div>
 <script src="https://usetrmnl.com/fullcalendar/index.global.min.js"></script>
 <script>
@@ -83,9 +85,17 @@
             return;
         }
 
+        {% comment %} Time Zone Override: manual UTC-offset-in-hours (no IANA-to-offset filter exists in Liquid, so no DST auto-adjustment). Falls back to the account offset when blank. {% endcomment %}
+        {% assign tzOverrideHours = trmnl.plugin_settings.custom_fields_values.time_zone_override %}
+        {% if tzOverrideHours == nil or tzOverrideHours == "" %}
+            {% assign effectiveOffset = trmnl.user.utc_offset %}
+        {% else %}
+            {% assign effectiveOffset = tzOverrideHours | times: 3600 %}
+        {% endif %}
+
         var calendar = new FullCalendar.Calendar(calendarEl, {
             // Literal local wall-clock time; timeZone: "UTC" stops FullCalendar from re-converting it.
-            now: "{{ trmnl.system.timestamp_utc | plus: trmnl.user.utc_offset | date: '%Y-%m-%dT%H:%M:%S' }}",
+            now: "{{ trmnl.system.timestamp_utc | plus: effectiveOffset | date: '%Y-%m-%dT%H:%M:%S' }}",
             timeZone: "UTC",
 
             {% comment %} ===== Auto-scroll window ===== {% endcomment %}
@@ -109,8 +119,8 @@
             {% comment %} Rotation frequency is hardcoded at 6h for now; a settings field for it comes later. {% endcomment %}
             {% if scrollEnabled == "true" %}
                 {% assign freqMin = 360 %}
-                {% assign nowHour = trmnl.system.timestamp_utc | plus: trmnl.user.utc_offset | date: '%H' | plus: 0 %}
-                {% assign nowMin = trmnl.system.timestamp_utc | plus: trmnl.user.utc_offset | date: '%M' | plus: 0 %}
+                {% assign nowHour = trmnl.system.timestamp_utc | plus: effectiveOffset | date: '%H' | plus: 0 %}
+                {% assign nowMin = trmnl.system.timestamp_utc | plus: effectiveOffset | date: '%M' | plus: 0 %}
                 {% assign nowTotalMin = nowHour | times: 60 | plus: nowMin %}
                 {% assign shiftedMin = nowTotalMin | minus: startTotalMin | plus: 1440 | modulo: 1440 %}
                 {% assign bucketIndex = shiftedMin | divided_by: freqMin %}
@@ -134,11 +144,14 @@
             {% if windowEndMinPart < 10 %}{% assign windowEndMinStr = "0" | append: windowEndMinPart %}{% else %}{% assign windowEndMinStr = windowEndMinPart | append: "" %}{% endif %}
             {% assign windowEnd = windowEndHourStr | append: ":" | append: windowEndMinStr | append: ":00" %}
 
-            // CalDAV display settings
-            firstDay: {{ caldav_405381.first_day | default: 0 }},
+            // Display settings (our own fields, not tied to any one calendar slot)
+            firstDay: {{ trmnl.plugin_settings.custom_fields_values.first_day | default: 0 }},
             scrollTime: {{ windowStart | json }},
             slotMinTime: {{ windowStart | json }},
             slotMaxTime: {{ windowEnd | json }},
+            weekNumbers: {% if trmnl.plugin_settings.custom_fields_values.show_week_numbers == "true" %}true{% else %}false{% endif %},
+            nowIndicator: {% unless trmnl.plugin_settings.custom_fields_values.show_now_indicator == "false" %}true{% else %}false{% endunless %},
+            displayEventTime: {% if trmnl.plugin_settings.custom_fields_values.include_event_time == "true" %}true{% else %}false{% endif %},
 
             // Week-view layout
             headerToolbar: false,
@@ -147,18 +160,16 @@
             expandRows: true,
             allDaySlot: true,
             slotDuration: "00:30:00",
-            nowIndicator: true,
-            displayEventTime: false,
 
             slotLabelFormat: {
                 hour: "numeric",
                 meridiem: "short",
-                hour12: {% if caldav_405381.time_format == "am/pm" %}true{% else %}false{% endif %}
+                hour12: {% if trmnl.plugin_settings.custom_fields_values.time_format == "am/pm" %}true{% else %}false{% endif %}
             },
             eventTimeFormat: {
                 hour: "numeric",
                 minute: "2-digit",
-                hour12: {% if caldav_405381.time_format == "am/pm" %}true{% else %}false{% endif %}
+                hour12: {% if trmnl.plugin_settings.custom_fields_values.time_format == "am/pm" %}true{% else %}false{% endif %}
             },
 
             // 10 calendar slots (2 per color). Each slot's plugin is user-picked via a plugin_instance_select dropdown; color comes from fillClass, read by eventContent below.
@@ -171,11 +182,11 @@
                     {% for event in black_1_source.merge_variables.events %}
                         {% assign startTime = event.start_full | default: event.date_time %}
                         {% unless event.all_day %}
-                            {% assign startTime = startTime | date: '%s' | plus: trmnl.user.utc_offset | date: '%Y-%m-%dT%H:%M:%S' %}
+                            {% assign startTime = startTime | date: '%s' | plus: effectiveOffset | date: '%Y-%m-%dT%H:%M:%S' %}
                         {% endunless %}
                         {% assign endTime = event.end_full | default: event.end %}
                         {% unless event.all_day %}
-                            {% assign endTime = endTime | date: '%s' | plus: trmnl.user.utc_offset | date: '%Y-%m-%dT%H:%M:%S' %}
+                            {% assign endTime = endTime | date: '%s' | plus: effectiveOffset | date: '%Y-%m-%dT%H:%M:%S' %}
                         {% endunless %}
                         {
                             allDay: {% if event.all_day %}true{% else %}false{% endif %},
@@ -193,11 +204,11 @@
                     {% for event in black_2_source.merge_variables.events %}
                         {% assign startTime = event.start_full | default: event.date_time %}
                         {% unless event.all_day %}
-                            {% assign startTime = startTime | date: '%s' | plus: trmnl.user.utc_offset | date: '%Y-%m-%dT%H:%M:%S' %}
+                            {% assign startTime = startTime | date: '%s' | plus: effectiveOffset | date: '%Y-%m-%dT%H:%M:%S' %}
                         {% endunless %}
                         {% assign endTime = event.end_full | default: event.end %}
                         {% unless event.all_day %}
-                            {% assign endTime = endTime | date: '%s' | plus: trmnl.user.utc_offset | date: '%Y-%m-%dT%H:%M:%S' %}
+                            {% assign endTime = endTime | date: '%s' | plus: effectiveOffset | date: '%Y-%m-%dT%H:%M:%S' %}
                         {% endunless %}
                         {
                             allDay: {% if event.all_day %}true{% else %}false{% endif %},
@@ -215,11 +226,11 @@
                     {% for event in gray_25_1_source.merge_variables.events %}
                         {% assign startTime = event.start_full | default: event.date_time %}
                         {% unless event.all_day %}
-                            {% assign startTime = startTime | date: '%s' | plus: trmnl.user.utc_offset | date: '%Y-%m-%dT%H:%M:%S' %}
+                            {% assign startTime = startTime | date: '%s' | plus: effectiveOffset | date: '%Y-%m-%dT%H:%M:%S' %}
                         {% endunless %}
                         {% assign endTime = event.end_full | default: event.end %}
                         {% unless event.all_day %}
-                            {% assign endTime = endTime | date: '%s' | plus: trmnl.user.utc_offset | date: '%Y-%m-%dT%H:%M:%S' %}
+                            {% assign endTime = endTime | date: '%s' | plus: effectiveOffset | date: '%Y-%m-%dT%H:%M:%S' %}
                         {% endunless %}
                         {
                             allDay: {% if event.all_day %}true{% else %}false{% endif %},
@@ -237,11 +248,11 @@
                     {% for event in gray_25_2_source.merge_variables.events %}
                         {% assign startTime = event.start_full | default: event.date_time %}
                         {% unless event.all_day %}
-                            {% assign startTime = startTime | date: '%s' | plus: trmnl.user.utc_offset | date: '%Y-%m-%dT%H:%M:%S' %}
+                            {% assign startTime = startTime | date: '%s' | plus: effectiveOffset | date: '%Y-%m-%dT%H:%M:%S' %}
                         {% endunless %}
                         {% assign endTime = event.end_full | default: event.end %}
                         {% unless event.all_day %}
-                            {% assign endTime = endTime | date: '%s' | plus: trmnl.user.utc_offset | date: '%Y-%m-%dT%H:%M:%S' %}
+                            {% assign endTime = endTime | date: '%s' | plus: effectiveOffset | date: '%Y-%m-%dT%H:%M:%S' %}
                         {% endunless %}
                         {
                             allDay: {% if event.all_day %}true{% else %}false{% endif %},
@@ -259,11 +270,11 @@
                     {% for event in gray_30_1_source.merge_variables.events %}
                         {% assign startTime = event.start_full | default: event.date_time %}
                         {% unless event.all_day %}
-                            {% assign startTime = startTime | date: '%s' | plus: trmnl.user.utc_offset | date: '%Y-%m-%dT%H:%M:%S' %}
+                            {% assign startTime = startTime | date: '%s' | plus: effectiveOffset | date: '%Y-%m-%dT%H:%M:%S' %}
                         {% endunless %}
                         {% assign endTime = event.end_full | default: event.end %}
                         {% unless event.all_day %}
-                            {% assign endTime = endTime | date: '%s' | plus: trmnl.user.utc_offset | date: '%Y-%m-%dT%H:%M:%S' %}
+                            {% assign endTime = endTime | date: '%s' | plus: effectiveOffset | date: '%Y-%m-%dT%H:%M:%S' %}
                         {% endunless %}
                         {
                             allDay: {% if event.all_day %}true{% else %}false{% endif %},
@@ -281,11 +292,11 @@
                     {% for event in gray_30_2_source.merge_variables.events %}
                         {% assign startTime = event.start_full | default: event.date_time %}
                         {% unless event.all_day %}
-                            {% assign startTime = startTime | date: '%s' | plus: trmnl.user.utc_offset | date: '%Y-%m-%dT%H:%M:%S' %}
+                            {% assign startTime = startTime | date: '%s' | plus: effectiveOffset | date: '%Y-%m-%dT%H:%M:%S' %}
                         {% endunless %}
                         {% assign endTime = event.end_full | default: event.end %}
                         {% unless event.all_day %}
-                            {% assign endTime = endTime | date: '%s' | plus: trmnl.user.utc_offset | date: '%Y-%m-%dT%H:%M:%S' %}
+                            {% assign endTime = endTime | date: '%s' | plus: effectiveOffset | date: '%Y-%m-%dT%H:%M:%S' %}
                         {% endunless %}
                         {
                             allDay: {% if event.all_day %}true{% else %}false{% endif %},
@@ -303,11 +314,11 @@
                     {% for event in gray_55_1_source.merge_variables.events %}
                         {% assign startTime = event.start_full | default: event.date_time %}
                         {% unless event.all_day %}
-                            {% assign startTime = startTime | date: '%s' | plus: trmnl.user.utc_offset | date: '%Y-%m-%dT%H:%M:%S' %}
+                            {% assign startTime = startTime | date: '%s' | plus: effectiveOffset | date: '%Y-%m-%dT%H:%M:%S' %}
                         {% endunless %}
                         {% assign endTime = event.end_full | default: event.end %}
                         {% unless event.all_day %}
-                            {% assign endTime = endTime | date: '%s' | plus: trmnl.user.utc_offset | date: '%Y-%m-%dT%H:%M:%S' %}
+                            {% assign endTime = endTime | date: '%s' | plus: effectiveOffset | date: '%Y-%m-%dT%H:%M:%S' %}
                         {% endunless %}
                         {
                             allDay: {% if event.all_day %}true{% else %}false{% endif %},
@@ -325,11 +336,11 @@
                     {% for event in gray_55_2_source.merge_variables.events %}
                         {% assign startTime = event.start_full | default: event.date_time %}
                         {% unless event.all_day %}
-                            {% assign startTime = startTime | date: '%s' | plus: trmnl.user.utc_offset | date: '%Y-%m-%dT%H:%M:%S' %}
+                            {% assign startTime = startTime | date: '%s' | plus: effectiveOffset | date: '%Y-%m-%dT%H:%M:%S' %}
                         {% endunless %}
                         {% assign endTime = event.end_full | default: event.end %}
                         {% unless event.all_day %}
-                            {% assign endTime = endTime | date: '%s' | plus: trmnl.user.utc_offset | date: '%Y-%m-%dT%H:%M:%S' %}
+                            {% assign endTime = endTime | date: '%s' | plus: effectiveOffset | date: '%Y-%m-%dT%H:%M:%S' %}
                         {% endunless %}
                         {
                             allDay: {% if event.all_day %}true{% else %}false{% endif %},
@@ -347,11 +358,11 @@
                     {% for event in gray_60_1_source.merge_variables.events %}
                         {% assign startTime = event.start_full | default: event.date_time %}
                         {% unless event.all_day %}
-                            {% assign startTime = startTime | date: '%s' | plus: trmnl.user.utc_offset | date: '%Y-%m-%dT%H:%M:%S' %}
+                            {% assign startTime = startTime | date: '%s' | plus: effectiveOffset | date: '%Y-%m-%dT%H:%M:%S' %}
                         {% endunless %}
                         {% assign endTime = event.end_full | default: event.end %}
                         {% unless event.all_day %}
-                            {% assign endTime = endTime | date: '%s' | plus: trmnl.user.utc_offset | date: '%Y-%m-%dT%H:%M:%S' %}
+                            {% assign endTime = endTime | date: '%s' | plus: effectiveOffset | date: '%Y-%m-%dT%H:%M:%S' %}
                         {% endunless %}
                         {
                             allDay: {% if event.all_day %}true{% else %}false{% endif %},
@@ -369,11 +380,11 @@
                     {% for event in gray_60_2_source.merge_variables.events %}
                         {% assign startTime = event.start_full | default: event.date_time %}
                         {% unless event.all_day %}
-                            {% assign startTime = startTime | date: '%s' | plus: trmnl.user.utc_offset | date: '%Y-%m-%dT%H:%M:%S' %}
+                            {% assign startTime = startTime | date: '%s' | plus: effectiveOffset | date: '%Y-%m-%dT%H:%M:%S' %}
                         {% endunless %}
                         {% assign endTime = event.end_full | default: event.end %}
                         {% unless event.all_day %}
-                            {% assign endTime = endTime | date: '%s' | plus: trmnl.user.utc_offset | date: '%Y-%m-%dT%H:%M:%S' %}
+                            {% assign endTime = endTime | date: '%s' | plus: effectiveOffset | date: '%Y-%m-%dT%H:%M:%S' %}
                         {% endunless %}
                         {
                             allDay: {% if event.all_day %}true{% else %}false{% endif %},
@@ -393,6 +404,14 @@
                 var fillClass = (info.event.extendedProps && info.event.extendedProps.fillClass) || "";
                 var fill = document.createElement("div");
                 fill.className = "fc-event-fill " + fillClass;
+
+                // info.timeText is only populated when displayEventTime (Include Event Time) is on.
+                if (info.timeText) {
+                    var time = document.createElement("div");
+                    time.className = "fc-event-fill-time";
+                    time.textContent = info.timeText;
+                    fill.appendChild(time);
+                }
 
                 var title = document.createElement("div");
                 title.className = "fc-event-fill-title";
@@ -424,13 +443,16 @@
             }
         }
 
-        // Measured a few times (not just once) since taller/shorter windows can delay when column layout actually settles.
-        requestAnimationFrame(function () {
-            requestAnimationFrame(updateNowIndicatorWidth);
-        });
-        setTimeout(updateNowIndicatorWidth, 300);
-        if (window.ResizeObserver) {
-            new ResizeObserver(updateNowIndicatorWidth).observe(calendarEl);
-        }
+        {% comment %} Only needed when Time Indicator Span is "Full week" - FullCalendar's own native per-day indicator needs no help otherwise. {% endcomment %}
+        {% unless trmnl.plugin_settings.custom_fields_values.now_indicator_span == "day" %}
+            // Measured a few times (not just once) since taller/shorter windows can delay when column layout actually settles.
+            requestAnimationFrame(function () {
+                requestAnimationFrame(updateNowIndicatorWidth);
+            });
+            setTimeout(updateNowIndicatorWidth, 300);
+            if (window.ResizeObserver) {
+                new ResizeObserver(updateNowIndicatorWidth).observe(calendarEl);
+            }
+        {% endunless %}
     });
 </script>
