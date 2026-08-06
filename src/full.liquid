@@ -85,9 +85,10 @@
         z-index: 10 !important;
     }
 </style>
-<div style="font-size: 14px; padding: 4px; font-family: monospace;">
-    DEBUG auto_scroll_enabled = [{{ auto_scroll_enabled }}] (blank means nil/empty)
-</div>
+<div style="font-size: 11px; padding: 4px; font-family: monospace; white-space: pre-wrap;">DEBUG bare auto_scroll_enabled = [{{ auto_scroll_enabled }}]
+DEBUG qualified trmnl.plugin_settings.custom_fields_values.auto_scroll_enabled = [{{ trmnl.plugin_settings.custom_fields_values.auto_scroll_enabled }}]
+DEBUG bare black_1_source (known field, for comparison) = [{{ black_1_source }}]
+DEBUG full custom_fields_values dump = [{{ trmnl.plugin_settings.custom_fields_values }}]</div>
 <!-- TEMP DEBUG - remove this div once we've confirmed the real value above -->
 <div
     id="calendar-full-week"
