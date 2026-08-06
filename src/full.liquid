@@ -5,17 +5,8 @@
     rel="stylesheet"
     href="https://trmnl.com/assets/plugins/calendars_full_week-0e0ce25b.css">
 <style>
-    /*
-     * FullCalendar's own bundled CSS (from the two stylesheets above) was
-     * quietly beating our Framework grayscale classes on specificity/order
-     * when applied straight to FullCalendar's .fc-event wrapper - even
-     * though the exact same classes work fine on a plain <div> (confirmed
-     * by testing outside FullCalendar). So instead of fighting that CSS,
-     * we neutralize FullCalendar's own event chrome entirely and render
-     * our own plain, uncontested inner <div> for every event (built in
-     * eventContent below) - structurally identical to the working plain
-     * <div class="bg--gray-25 text--white"> test.
-     */
+    /* FullCalendar's bundled CSS overrides color classes on .fc-event, 
+    so we color events ourselves via eventContent below. */
     #calendar-full-week .fc-event,
     #calendar-full-week .fc-v-event,
     #calendar-full-week .fc-timegrid-event,
@@ -35,15 +26,9 @@
         padding: 2px 4px;
         overflow: hidden;
     }
-    /*
-     * Black, gray-30, and gray-55 are the exact non-dithered levels on a
-     * 2-bit panel, so plain hex renders them identically to the Framework
-     * tokens - kept as hardcoded hex since that's confirmed working.
-     * Gray-25 and gray-60 use the real bg--gray-25/bg--gray-60 Framework
-     * classes instead (set directly on .fc-event-fill in eventContent),
-     * since dithering for those two only exists in TRMNL's own CSS for
-     * those specific tokens - a flat hex color can't reproduce it.
-     */
+
+    /* Black/gray-30/gray-55 are native 2-bit levels, so hex works. 
+    Gray-25/gray-60 need TRMNL's own bg--gray-* classes to properly utilize dithering. */
     #calendar-full-week .black-1,
     #calendar-full-week .black-2 {
         background-color: #000000 !important;
@@ -73,6 +58,7 @@
         -webkit-text-stroke: 0 !important;
         text-shadow: none !important;
     }
+
     #calendar-full-week .fc-timegrid-now-indicator-line {
         height: 2px !important;
         background-color: black !important;
@@ -98,47 +84,34 @@
         }
 
         var calendar = new FullCalendar.Calendar(calendarEl, {
-            /*
-             * Already converted to the user's local time (see the per-slot
-             * conversion below). timeZone: "UTC" tells FullCalendar to
-             * treat every timestamp as a literal wall-clock value instead
-             * of re-converting it, which is what keeps event times from
-             * shifting by a few hours.
-             */
+            // Literal local wall-clock time; timeZone: "UTC" stops FullCalendar from re-converting it.
             now: "{{ trmnl.system.timestamp_utc | plus: trmnl.user.utc_offset | date: '%Y-%m-%dT%H:%M:%S' }}",
             timeZone: "UTC",
 
-            {% comment %}
-                STEP 3 of the backtrack plan: swap the hardcoded 08:00/20:00
-                anchor+width for the custom_fields Start Time/End Time,
-                keeping rotation frequency hardcoded at 6h for now (that's
-                the next step). Everything reads from the qualified
-                trmnl.plugin_settings.custom_fields_values.* path, not bare
-                keynames - confirmed via debug dump that bare keynames
-                don't reliably alias for every field type here, so this
-                sticks to the one path we've proven actually works.
-            {% endcomment %}
-            {% assign scrollEnabledValue = trmnl.plugin_settings.custom_fields_values.auto_scroll_enabled %}
+            {% comment %} ===== Auto-scroll window ===== {% endcomment %}
+            {% comment %} Boolean fields don't alias to a bare variable here, so read everything via the qualified custom_fields_values path. {% endcomment %}
+            {% assign scrollEnabled = trmnl.plugin_settings.custom_fields_values.auto_scroll_enabled %}
             {% assign startValue = trmnl.plugin_settings.custom_fields_values.auto_scroll_start | default: "08:00" %}
             {% assign endValue = trmnl.plugin_settings.custom_fields_values.auto_scroll_end | default: "20:00" %}
 
+            {% comment %} Parse "HH:MM" into minutes-since-midnight. {% endcomment %}
             {% assign startParts = startValue | split: ":" %}
             {% assign startHour = startParts | first | plus: 0 %}
-            {% assign startMinutePart = startParts | last | plus: 0 %}
+            {% assign startMin = startParts | last | plus: 0 %}
             {% assign endParts = endValue | split: ":" %}
             {% assign endHour = endParts | first | plus: 0 %}
-            {% assign endMinutePart = endParts | last | plus: 0 %}
+            {% assign endMin = endParts | last | plus: 0 %}
 
-            {% assign startTotalMin = startHour | times: 60 | plus: startMinutePart %}
-            {% assign endTotalMin = endHour | times: 60 | plus: endMinutePart %}
+            {% assign startTotalMin = startHour | times: 60 | plus: startMin %}
+            {% assign endTotalMin = endHour | times: 60 | plus: endMin %}
             {% assign windowWidthMin = endTotalMin | minus: startTotalMin | plus: 1440 | modulo: 1440 %}
 
-            {% if scrollEnabledValue == "true" %}
+            {% comment %} Rotation frequency is hardcoded at 6h for now; a settings field for it comes later. {% endcomment %}
+            {% if scrollEnabled == "true" %}
                 {% assign freqMin = 360 %}
                 {% assign nowHour = trmnl.system.timestamp_utc | plus: trmnl.user.utc_offset | date: '%H' | plus: 0 %}
-                {% assign nowMinutePart = trmnl.system.timestamp_utc | plus: trmnl.user.utc_offset | date: '%M' | plus: 0 %}
-                {% assign nowTotalMin = nowHour | times: 60 | plus: nowMinutePart %}
-
+                {% assign nowMin = trmnl.system.timestamp_utc | plus: trmnl.user.utc_offset | date: '%M' | plus: 0 %}
+                {% assign nowTotalMin = nowHour | times: 60 | plus: nowMin %}
                 {% assign shiftedMin = nowTotalMin | minus: startTotalMin | plus: 1440 | modulo: 1440 %}
                 {% assign bucketIndex = shiftedMin | divided_by: freqMin %}
                 {% assign bucketOffsetMin = bucketIndex | times: freqMin %}
@@ -148,33 +121,18 @@
             {% endif %}
             {% assign windowEndMin = anchorMin | plus: windowWidthMin %}
 
-            {% assign windowStartHourPart = anchorMin | divided_by: 60 %}
-            {% assign windowStartMinutePart = anchorMin | modulo: 60 %}
-            {% if windowStartHourPart < 10 %}
-                {% assign windowStartHourStr = "0" | append: windowStartHourPart %}
-            {% else %}
-                {% assign windowStartHourStr = windowStartHourPart | append: "" %}
-            {% endif %}
-            {% if windowStartMinutePart < 10 %}
-                {% assign windowStartMinuteStr = "0" | append: windowStartMinutePart %}
-            {% else %}
-                {% assign windowStartMinuteStr = windowStartMinutePart | append: "" %}
-            {% endif %}
-            {% assign windowStart = windowStartHourStr | append: ":" | append: windowStartMinuteStr | append: ":00" %}
+            {% comment %} Format minutes-since-midnight back into "HH:MM:SS" (Liquid has no pad filter, so zero-pad via if/else). {% endcomment %}
+            {% assign windowStartHour = anchorMin | divided_by: 60 %}
+            {% assign windowStartMin = anchorMin | modulo: 60 %}
+            {% if windowStartHour < 10 %}{% assign windowStartHourStr = "0" | append: windowStartHour %}{% else %}{% assign windowStartHourStr = windowStartHour | append: "" %}{% endif %}
+            {% if windowStartMin < 10 %}{% assign windowStartMinStr = "0" | append: windowStartMin %}{% else %}{% assign windowStartMinStr = windowStartMin | append: "" %}{% endif %}
+            {% assign windowStart = windowStartHourStr | append: ":" | append: windowStartMinStr | append: ":00" %}
 
-            {% assign windowEndHourPart = windowEndMin | divided_by: 60 %}
-            {% assign windowEndMinutePart = windowEndMin | modulo: 60 %}
-            {% if windowEndHourPart < 10 %}
-                {% assign windowEndHourStr = "0" | append: windowEndHourPart %}
-            {% else %}
-                {% assign windowEndHourStr = windowEndHourPart | append: "" %}
-            {% endif %}
-            {% if windowEndMinutePart < 10 %}
-                {% assign windowEndMinuteStr = "0" | append: windowEndMinutePart %}
-            {% else %}
-                {% assign windowEndMinuteStr = windowEndMinutePart | append: "" %}
-            {% endif %}
-            {% assign windowEnd = windowEndHourStr | append: ":" | append: windowEndMinuteStr | append: ":00" %}
+            {% assign windowEndHour = windowEndMin | divided_by: 60 %}
+            {% assign windowEndMinPart = windowEndMin | modulo: 60 %}
+            {% if windowEndHour < 10 %}{% assign windowEndHourStr = "0" | append: windowEndHour %}{% else %}{% assign windowEndHourStr = windowEndHour | append: "" %}{% endif %}
+            {% if windowEndMinPart < 10 %}{% assign windowEndMinStr = "0" | append: windowEndMinPart %}{% else %}{% assign windowEndMinStr = windowEndMinPart | append: "" %}{% endif %}
+            {% assign windowEnd = windowEndHourStr | append: ":" | append: windowEndMinStr | append: ":00" %}
 
             // CalDAV display settings
             firstDay: {{ caldav_405381.first_day | default: 0 }},
@@ -203,40 +161,12 @@
                 hour12: {% if caldav_405381.time_format == "am/pm" %}true{% else %}false{% endif %}
             },
 
-            /*
-             * 10 fixed calendar slots, 2 per color (black, gray-25,
-             * gray-30, gray-55, gray-60 - white is the page background, so
-             * it's not offered as an event color). Each slot's data source
-             * is picked by the VIEWING USER via a plugin_instance_select
-             * dropdown in the settings form - not a hardcoded plugin name.
-             * That's what lets this same template work unmodified for
-             * someone else's account with entirely different plugins:
-             * their dropdown shows their own plugins.
-             *
-             * Color is set via fillClass in extendedProps, read by
-             * eventContent below to build the actual filled <div> - not
-             * classNames on FullCalendar's own event wrapper, which its
-             * bundled CSS was overriding.
-             *
-             * NOTE: plugin_instance_select binds to the plugin instance
-             * itself (same shape as a hardcoded private_plugin_XXXXXX
-             * reference), so events live under .merge_variables.events,
-             * not directly under .events.
-             *
-             * Trailing commas after each event are intentional and
-             * harmless - JS allows them, so no "is this the last item"
-             * bookkeeping is needed.
-             *
-             * Times: raw event times come back as absolute UTC instants
-             * (e.g. "...T03:45:00.000Z"). Since FullCalendar is set to
-             * timeZone: "UTC" and expects literal wall-clock strings, each
-             * time is converted to epoch seconds, shifted by the user's
-             * UTC offset, then reformatted with no "Z"/offset suffix.
-             * All-day events are left alone (date-only, no time to shift).
-             */
+            // 10 calendar slots (2 per color). Each slot's plugin is user-picked via a plugin_instance_select dropdown; color comes from fillClass, read by eventContent below.
+            // Events live under .merge_variables.events (not .events) since plugin_instance_select binds to the plugin instance itself.
+            // Event times arrive as absolute UTC instants; each is shifted to the user's local offset and stripped of its "Z" suffix to match timeZone: "UTC" above.
             events: [
 
-                {% comment %} ---------- Black - Calendar 1 ---------- {% endcomment %}
+                {% comment %} Black 1 {% endcomment %}
                 {% if black_1_source %}
                     {% for event in black_1_source.merge_variables.events %}
                         {% assign startTime = event.start_full | default: event.date_time %}
@@ -258,7 +188,7 @@
                     {% endfor %}
                 {% endif %}
 
-                {% comment %} ---------- Black - Calendar 2 ---------- {% endcomment %}
+                {% comment %} Black 2 {% endcomment %}
                 {% if black_2_source %}
                     {% for event in black_2_source.merge_variables.events %}
                         {% assign startTime = event.start_full | default: event.date_time %}
@@ -280,7 +210,7 @@
                     {% endfor %}
                 {% endif %}
 
-                {% comment %} ---------- Gray 25 - Calendar 1 ---------- {% endcomment %}
+                {% comment %} Gray 25 - 1 {% endcomment %}
                 {% if gray_25_1_source %}
                     {% for event in gray_25_1_source.merge_variables.events %}
                         {% assign startTime = event.start_full | default: event.date_time %}
@@ -302,7 +232,7 @@
                     {% endfor %}
                 {% endif %}
 
-                {% comment %} ---------- Gray 25 - Calendar 2 ---------- {% endcomment %}
+                {% comment %} Gray 25 - 2 {% endcomment %}
                 {% if gray_25_2_source %}
                     {% for event in gray_25_2_source.merge_variables.events %}
                         {% assign startTime = event.start_full | default: event.date_time %}
@@ -324,7 +254,7 @@
                     {% endfor %}
                 {% endif %}
 
-                {% comment %} ---------- Gray 30 - Calendar 1 ---------- {% endcomment %}
+                {% comment %} Gray 30 - 1 {% endcomment %}
                 {% if gray_30_1_source %}
                     {% for event in gray_30_1_source.merge_variables.events %}
                         {% assign startTime = event.start_full | default: event.date_time %}
@@ -346,7 +276,7 @@
                     {% endfor %}
                 {% endif %}
 
-                {% comment %} ---------- Gray 30 - Calendar 2 ---------- {% endcomment %}
+                {% comment %} Gray 30 - 2 {% endcomment %}
                 {% if gray_30_2_source %}
                     {% for event in gray_30_2_source.merge_variables.events %}
                         {% assign startTime = event.start_full | default: event.date_time %}
@@ -368,7 +298,7 @@
                     {% endfor %}
                 {% endif %}
 
-                {% comment %} ---------- Gray 55 - Calendar 1 ---------- {% endcomment %}
+                {% comment %} Gray 55 - 1 {% endcomment %}
                 {% if gray_55_1_source %}
                     {% for event in gray_55_1_source.merge_variables.events %}
                         {% assign startTime = event.start_full | default: event.date_time %}
@@ -390,7 +320,7 @@
                     {% endfor %}
                 {% endif %}
 
-                {% comment %} ---------- Gray 55 - Calendar 2 ---------- {% endcomment %}
+                {% comment %} Gray 55 - 2 {% endcomment %}
                 {% if gray_55_2_source %}
                     {% for event in gray_55_2_source.merge_variables.events %}
                         {% assign startTime = event.start_full | default: event.date_time %}
@@ -412,7 +342,7 @@
                     {% endfor %}
                 {% endif %}
 
-                {% comment %} ---------- Gray 60 - Calendar 1 ---------- {% endcomment %}
+                {% comment %} Gray 60 - 1 {% endcomment %}
                 {% if gray_60_1_source %}
                     {% for event in gray_60_1_source.merge_variables.events %}
                         {% assign startTime = event.start_full | default: event.date_time %}
@@ -434,7 +364,7 @@
                     {% endfor %}
                 {% endif %}
 
-                {% comment %} ---------- Gray 60 - Calendar 2 ---------- {% endcomment %}
+                {% comment %} Gray 60 - 2 {% endcomment %}
                 {% if gray_60_2_source %}
                     {% for event in gray_60_2_source.merge_variables.events %}
                         {% assign startTime = event.start_full | default: event.date_time %}
@@ -458,14 +388,7 @@
 
             ],
 
-            /*
-             * Renders each event as one plain, self-owned <div> - the same
-             * structure as the plain-div test that proved Framework
-             * classes (and dithering) work fine outside of FullCalendar's
-             * own markup. FullCalendar's default event chrome is
-             * neutralized in the <style> block above, so this div is the
-             * only thing painting each event's background/text.
-             */
+            // Renders each event as a plain uncontested <div> (see eventContent), since FullCalendar's own event chrome is neutralized above.
             eventContent: function (info) {
                 var fillClass = (info.event.extendedProps && info.event.extendedProps.fillClass) || "";
                 var fill = document.createElement("div");
@@ -482,7 +405,7 @@
 
         calendar.render();
 
-        // Keep the current-time line spanning only the day columns.
+        // Stretches the now-indicator line across all day columns instead of just today's.
         function updateNowIndicatorWidth() {
             try {
                 var dayColumns = calendarEl.querySelectorAll("td.fc-timegrid-col:not(.fc-timegrid-axis)");
@@ -501,16 +424,7 @@
             }
         }
 
-        /*
-         * A single requestAnimationFrame was enough when the visible
-         * window was always a fixed 12h. Now that Start/End Time can
-         * produce taller/shorter slot grids, FullCalendar's timegrid can
-         * take a bit longer to finish laying out column positions after
-         * render() - so one early measurement can grab stale
-         * getBoundingClientRect() values. Measuring again after a couple
-         * more frames, plus a short delayed fallback, makes sure we catch
-         * the DOM once layout has actually settled.
-         */
+        // Measured a few times (not just once) since taller/shorter windows can delay when column layout actually settles.
         requestAnimationFrame(function () {
             requestAnimationFrame(updateNowIndicatorWidth);
         });
