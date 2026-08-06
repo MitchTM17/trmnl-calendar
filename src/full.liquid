@@ -109,31 +109,36 @@
             timeZone: "UTC",
 
             {% comment %}
-                STEP 1 of the backtrack plan: pure hardcoded rotation only,
-                no settings fields involved at all. Same 4-bucket math
-                that was validated earlier in this build - 08:00-20:00,
-                14:00-02:00, 20:00-08:00, 02:00-14:00, cycling every 6h,
-                based on local time. Once this is confirmed actually
-                rotating on the device, we'll layer the enable/disable
-                toggle back on top of it, then the custom start/end times.
+                STEP 2 of the backtrack plan: confirmed-working rotation
+                (STEP 1) now wrapped in a plain if/else on the
+                auto_scroll_enabled toggle. If it's not truthy, skip the
+                rotation entirely and just use the fixed 08:00-20:00
+                default. Next step after this is confirmed: swap the
+                hardcoded 08:00/20:00 default for the custom start/end
+                fields.
             {% endcomment %}
-            {% assign localHour = trmnl.system.timestamp_utc | plus: trmnl.user.utc_offset | date: '%H' | plus: 0 %}
-            {% assign shiftedHour = localHour | minus: 2 | plus: 24 | modulo: 24 %}
-            {% assign bucketIndex = shiftedHour | divided_by: 6 %}
-            {% case bucketIndex %}
-                {% when 0 %}
-                    {% assign windowStart = "02:00:00" %}
-                    {% assign windowEnd = "14:00:00" %}
-                {% when 1 %}
-                    {% assign windowStart = "08:00:00" %}
-                    {% assign windowEnd = "20:00:00" %}
-                {% when 2 %}
-                    {% assign windowStart = "14:00:00" %}
-                    {% assign windowEnd = "26:00:00" %}
-                {% else %}
-                    {% assign windowStart = "20:00:00" %}
-                    {% assign windowEnd = "32:00:00" %}
-            {% endcase %}
+            {% if auto_scroll_enabled %}
+                {% assign localHour = trmnl.system.timestamp_utc | plus: trmnl.user.utc_offset | date: '%H' | plus: 0 %}
+                {% assign shiftedHour = localHour | minus: 2 | plus: 24 | modulo: 24 %}
+                {% assign bucketIndex = shiftedHour | divided_by: 6 %}
+                {% case bucketIndex %}
+                    {% when 0 %}
+                        {% assign windowStart = "02:00:00" %}
+                        {% assign windowEnd = "14:00:00" %}
+                    {% when 1 %}
+                        {% assign windowStart = "08:00:00" %}
+                        {% assign windowEnd = "20:00:00" %}
+                    {% when 2 %}
+                        {% assign windowStart = "14:00:00" %}
+                        {% assign windowEnd = "26:00:00" %}
+                    {% else %}
+                        {% assign windowStart = "20:00:00" %}
+                        {% assign windowEnd = "32:00:00" %}
+                {% endcase %}
+            {% else %}
+                {% assign windowStart = "08:00:00" %}
+                {% assign windowEnd = "20:00:00" %}
+            {% endif %}
 
             // CalDAV display settings
             firstDay: {{ caldav_405381.first_day | default: 0 }},
