@@ -35,8 +35,20 @@ custom_fields:
   field_type: boolean
   name: Auto-Scroll Calendar Window
   description: Automatically shift the visible time range as the day progresses.
-  help_text: If off, the calendar always shows the fixed 08:00-20:00 range.
+  help_text: If off, the calendar always shows the fixed Start Time-End Time range below.
   default: true
+  group: Auto-Scroll Window
+- keyname: auto_scroll_start
+  field_type: time
+  name: Start Time
+  description: Start of the visible window (and, when auto-scroll is on, its first anchor point).
+  default: '08:00'
+  group: Auto-Scroll Window
+- keyname: auto_scroll_end
+  field_type: time
+  name: End Time
+  description: End of the visible window. (End - Start) sets the window's width.
+  default: '20:00'
   group: Auto-Scroll Window
 - keyname: black_1_source
   field_type: plugin_instance_select
