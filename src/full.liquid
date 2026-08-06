@@ -85,11 +85,6 @@
         z-index: 10 !important;
     }
 </style>
-<div style="font-size: 11px; padding: 4px; font-family: monospace; white-space: pre-wrap;">DEBUG bare auto_scroll_enabled = [{{ auto_scroll_enabled }}]
-DEBUG qualified trmnl.plugin_settings.custom_fields_values.auto_scroll_enabled = [{{ trmnl.plugin_settings.custom_fields_values.auto_scroll_enabled }}]
-DEBUG bare black_1_source (known field, for comparison) = [{{ black_1_source }}]
-DEBUG full custom_fields_values dump = [{{ trmnl.plugin_settings.custom_fields_values }}]</div>
-<!-- TEMP DEBUG - remove this div once we've confirmed the real value above -->
 <div
     id="calendar-full-week"
     class="trmnl-calendar trmnl-calendar--week highlight-today no-weekend-shading now-indicator-full-week">
@@ -116,13 +111,22 @@ DEBUG full custom_fields_values dump = [{{ trmnl.plugin_settings.custom_fields_v
             {% comment %}
                 STEP 2 of the backtrack plan: confirmed-working rotation
                 (STEP 1) now wrapped in a plain if/else on the
-                auto_scroll_enabled toggle. If it's not truthy, skip the
+                auto_scroll_enabled toggle. If it's not "true", skip the
                 rotation entirely and just use the fixed 08:00-20:00
                 default. Next step after this is confirmed: swap the
                 hardcoded 08:00/20:00 default for the custom start/end
                 fields.
+
+                IMPORTANT (confirmed via debug dump): boolean fields don't
+                get aliased to a bare top-level variable the way other
+                field types do here - the bare `auto_scroll_enabled` is
+                always blank. The real value only shows up at
+                trmnl.plugin_settings.custom_fields_values.auto_scroll_enabled,
+                and it comes through as the literal string "true"/"false"
+                (not a real boolean), so it's compared as a string below.
             {% endcomment %}
-            {% if auto_scroll_enabled %}
+            {% assign scrollEnabledValue = trmnl.plugin_settings.custom_fields_values.auto_scroll_enabled %}
+            {% if scrollEnabledValue == "true" %}
                 {% assign localHour = trmnl.system.timestamp_utc | plus: trmnl.user.utc_offset | date: '%H' | plus: 0 %}
                 {% assign shiftedHour = localHour | minus: 2 | plus: 24 | modulo: 24 %}
                 {% assign bucketIndex = shiftedHour | divided_by: 6 %}
