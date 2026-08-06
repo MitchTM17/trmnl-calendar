@@ -501,7 +501,20 @@
             }
         }
 
-        requestAnimationFrame(updateNowIndicatorWidth);
+        /*
+         * A single requestAnimationFrame was enough when the visible
+         * window was always a fixed 12h. Now that Start/End Time can
+         * produce taller/shorter slot grids, FullCalendar's timegrid can
+         * take a bit longer to finish laying out column positions after
+         * render() - so one early measurement can grab stale
+         * getBoundingClientRect() values. Measuring again after a couple
+         * more frames, plus a short delayed fallback, makes sure we catch
+         * the DOM once layout has actually settled.
+         */
+        requestAnimationFrame(function () {
+            requestAnimationFrame(updateNowIndicatorWidth);
+        });
+        setTimeout(updateNowIndicatorWidth, 300);
         if (window.ResizeObserver) {
             new ResizeObserver(updateNowIndicatorWidth).observe(calendarEl);
         }
